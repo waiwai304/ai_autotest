@@ -1,0 +1,23 @@
+id: base-production-rules
+name: 生产网站测试安全基线
+version: 9
+locked: true
+rules:
+  - id: no-real-payment
+    severity: critical
+    text: 禁止执行真实支付、真实充值和真实退款
+  - id: no-captcha-bypass
+    severity: critical
+    text: 禁止绕过验证码或网站安全验证
+  - id: test-account-only
+    severity: critical
+    text: 登录测试只能使用专用测试账号
+  - id: no-secret-to-ai
+    severity: critical
+    text: 密码、Cookie、Token 和支付信息不得发送给 AI
+  - id: domain-allowlist
+    severity: critical
+    text: 只能测试已审核并加入白名单的域名
+  - id: production-concurrency
+    severity: high
+    text: 单个生产网站默认最多同时运行两个浏览器任务

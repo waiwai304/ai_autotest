@@ -1,0 +1,113 @@
+{% extends 'base.html' %}{% block title %}执行记录{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">执行记录</h4>
+  <div class="d-flex gap-2">
+    <button type="submit" form="delForm" class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirmDel()">删除选中</button>
+    <button class="ui-btn ui-btn-sm" onclick="location.reload()">刷新</button>
+  </div>
+</div>
+
+{# 状态 Tab + 过滤条（GET 提交，保留 status tab） #}
+<div class="ui-card mb-3"><div class="ui-card-body py-2">
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <div class="btn-group btn-group-sm" role="group">
+      <a class="btn {% if not f_status %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/jobs/">全部 {{ counts.all }}</a>
+      <a class="btn {% if f_status == 'running' %}btn-warning{% else %}btn-outline-warning{% endif %}" href="/jobs/?status=running">运行中 {{ counts.running }}</a>
+      <a class="btn {% if f_status == 'passed' %}btn-success{% else %}btn-outline-success{% endif %}" href="/jobs/?status=passed">通过 {{ counts.passed }}</a>
+      <a class="btn {% if f_status == 'failed' %}btn-danger{% else %}btn-outline-danger{% endif %}" href="/jobs/?status=failed">失败 {{ counts.failed }}</a>
+    </div>
+    <form method="get" action="/jobs/" class="d-flex flex-wrap gap-2 ms-auto align-items-center">
+      {% if f_status %}<input type="hidden" name="status" value="{{ f_status }}">{% endif %}
+      <select name="device" class="ui-select" style="width:auto" onchange="this.form.submit()">
+        <option value="">全部端</option>
+        <option value="pc" {% if f_device == 'pc' %}selected{% endif %}>PC</option>
+        <option value="wap" {% if f_device == 'wap' %}selected{% endif %}>WAP</option>
+      </select>
+      <select name="site" class="ui-select" style="width:auto" onchange="this.form.submit()">
+        <option value="">全部网站</option>
+        {% for s in sites %}<option value="{{ s.code }}" {% if f_site == s.code %}selected{% endif %}>{{ s.code }}</option>{% endfor %}
+      </select>
+      <select name="scenario" class="ui-select" style="width:auto" onchange="this.form.submit()">
+        <option value="">全部用例</option>
+        {% for s in scenarios %}<option value="{{ s.code }}" {% if f_scenario == s.code %}selected{% endif %}>{{ s.code }}</option>{% endfor %}
+      </select>
+      <noscript><button class="ui-btn ui-btn-sm">筛选</button></noscript>
+    </form>
+  </div>
+</div></div>
+
+<form method="post" action="/jobs/delete/" id="delForm">{% csrf_token %}
+<div class="ui-card"><div class="ui-card-body p-0">
+<table class="ui-table mb-0">
+<tr><th style="width:28px"><input type="checkbox" id="selAll" title="全选本页（仅终态可删）"></th><th>JOB</th><th>Campaign</th><th>端</th><th>站点</th><th>用例</th><th>状态</th><th>进度</th><th>开始时间</th><th>耗时</th><th>操作</th></tr>
+{% for j in page_obj.object_list %}
+<tr>
+  <td>{% if j.status == 'passed' or j.status == 'failed' or j.status == 'lost' or j.status == 'cancelled' %}<input type="checkbox" name="ids" value="{{ j.pk }}" class="row-sel">{% else %}<span class="text-slate-400 text-[11.5px]" title="运行中/排队中不可删除">·</span>{% endif %}</td>
+  <td><a href="/campaigns/{{ j.campaign_id }}/jobs/{{ j.pk }}/"><b>{{ j.pk }}</b></a></td>
+  <td><a href="/campaigns/{{ j.campaign_id }}/">#{{ j.campaign_id }}</a></td>
+  <td>{% if j.device == 'wap' %}<span class="ui-badge ui-badge-green">WAP</span>{% else %}<span class="ui-badge ui-badge-blue">PC</span>{% endif %}</td>
+  <td>{{ j.site_code }}</td>
+  <td>{{ j.scenario_code }}</td>
+  <td>
+    {% if j.status == 'passed' %}<span class="ui-badge ui-badge-green">通过</span>
+    {% elif j.status == 'failed' %}<span class="ui-badge ui-badge-red">失败</span>
+    {% elif j.status == 'running' %}<span class="ui-badge ui-badge-amber">运行中</span>
+    {% elif j.status == 'cancel_requested' %}<span class="ui-badge ui-badge-amber">取消中</span>
+    {% elif j.status == 'lost' %}<span class="ui-badge ui-badge-dark">失联</span>
+    {% elif j.status == 'queued' %}<span class="ui-badge ui-badge-sky">排队中</span>
+    {% elif j.status == 'cancelled' %}<span class="ui-badge ui-badge-slate">已取消</span>
+    {% else %}<span class="ui-badge ui-badge-slate">{{ j.get_status_display }}</span>{% endif %}
+  </td>
+  <td class="text-[11.5px]">
+    {% if j.progress.steps %}
+      {{ j.progress.done }}/{{ j.progress.total }}
+      <div style="background:#f0f0f0;border-radius:4px;height:4px;overflow:hidden;margin-top:2px;min-width:60px">
+        <div style="height:100%;width:{% widthratio j.progress.done j.progress.total|default:1 100 %}%;background:{% if j.status == 'failed' %}#e13c3c{% else %}#0960bd{% endif %}"></div>
+      </div>
+    {% else %}-{% endif %}
+  </td>
+  <td class="text-[11.5px]">{% if j.started_at %}{{ j.started_at|date:'m-d H:i:s' }}{% else %}-{% endif %}</td>
+  <td class="text-[11.5px]">{% if j.finished_at and j.started_at %}{{ j.started_at|timesince:j.finished_at }}{% elif j.started_at %}<span class="text-warning">运行中…</span>{% else %}-{% endif %}</td>
+  <td class="text-nowrap">
+    <a class="ui-btn ui-btn-sm" href="/campaigns/{{ j.campaign_id }}/jobs/{{ j.pk }}/log/" title="运行日志">日志</a>
+    {% if j.status == 'running' or j.status == 'cancel_requested' or j.status == 'queued' %}
+    <form method="post" action="/campaigns/{{ j.campaign_id }}/jobs/{{ j.pk }}/cancel/" class="d-inline">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirm('确定终止该任务？测试进程将在数秒内停止，已完成步骤的截图与报告保留。');" title="终止运行中/排队中的测试进程">终止</button></form>
+    {% endif %}
+    {% if j.rep_url %}<a class="ui-btn ui-btn-sm" href="{{ j.rep_url }}" target="_blank">报告</a>{% endif %}
+  </td>
+</tr>
+{% empty %}<tr><td colspan="11" class="text-center text-muted py-4">无符合条件的执行记录</td></tr>{% endfor %}
+</table>
+</div></div>
+</form>
+
+<script>
+function confirmDel(){
+  var f = document.getElementById('delForm');
+  var n = f.querySelectorAll('input[name=ids]:checked').length;
+  if(!n){ alert('请先勾选要删除的执行记录（仅终态：通过/失败/失联/已取消）'); return false; }
+  return confirm('确定删除选中的 ' + n + ' 条执行记录？其报告与工件目录将一并删除，不可恢复。');
+}
+(function(){
+  var selAll = document.getElementById('selAll');
+  if(selAll){
+    selAll.addEventListener('change', function(){
+      document.querySelectorAll('#delForm input[name=ids]').forEach(function(cb){ cb.checked = selAll.checked; });
+    });
+  }
+})();
+</script>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-3"><ul class="pagination pagination-sm mb-0">
+  {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if f_status %}&status={{ f_status }}{% endif %}{% if f_device %}&device={{ f_device }}{% endif %}{% if f_site %}&site={{ f_site }}{% endif %}{% if f_scenario %}&scenario={{ f_scenario }}{% endif %}">上一页</a></li>
+  {% endif %}
+  <li class="page-item disabled"><span class="page-link">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页（共 {{ page_obj.paginator.count }} 条）</span></li>
+  {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if f_status %}&status={{ f_status }}{% endif %}{% if f_device %}&device={{ f_device }}{% endif %}{% if f_site %}&site={{ f_site }}{% endif %}{% if f_scenario %}&scenario={{ f_scenario }}{% endif %}">下一页</a></li>
+  {% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

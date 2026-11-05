@@ -1,0 +1,234 @@
+{% extends 'base.html' %}{% block title %}流程库{% endblock %}
+{% block content %}
+<style>
+  .flow-table tbody tr{cursor:pointer}
+  .flow-table tbody tr:hover{background:#f5f8ff}
+  .flow-dlg{border:none;background:#fff;padding:0;width:min(94vw,860px);max-height:86vh}
+  .flow-dlg::backdrop{background:rgba(15,23,42,.45)}
+  .flow-dlg .dlg-body{overflow-y:auto;max-height:calc(86vh - 60px);padding:12px 16px}
+  .flow-dlg .dlg-head{position:sticky;top:0;background:#fff;z-index:1;border-bottom:1px solid #eee;
+    padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .flow-step-table{font-size:12.5px}
+  .flow-step-table td{vertical-align:top}
+</style>
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+  <h4 class="mb-0">流程库</h4>
+  <div>
+    <a class="ui-btn ui-btn-success ui-btn-sm" href="/scenarios/cases/ai-create/">AI 新建测试用例</a>
+    <a class="ui-btn ui-btn-sm" href="/scenarios/cases/create/">手动创建</a>
+    <a class="ui-btn ui-btn-primary ui-btn-sm" href="/scenarios/cases/">用例说明</a>
+    <a class="ui-btn ui-btn-primary ui-btn-sm" href="/campaigns/new/">发起测试</a>
+  </div>
+</div>
+<div class="ui-summary mb-3">
+  <span class="ui-badge ui-badge-slate">共 {{ meta.total }} 个流程</span>
+  <span class="ui-badge ui-badge-slate">内置 {{ meta.built_in }} · 页面创建 {{ meta.doc }}</span>
+  <span class="ui-badge ui-badge-slate">{{ meta.step_total }} 步</span>
+  <span>点击行查看完整信息</span>
+  <details class="ui-fold inline-flex"><summary>数据来源</summary>
+    <div class="ui-fold-body absolute z-10 left-0 top-7 w-[min(88vw,440px)] bg-white border shadow-lg">内置流程的用例说明由 <code>tools/gen_case_docs.py</code> 扫描源码生成（站点档案 {{ meta.site_id }} · {{ meta.generated_at }}）；页面创建流程来自用例说明页的规范文本解析。</div>
+  </details>
+</div>
+
+<div class="ui-card">
+  <div class="ui-card-body p-0">
+    <table class="ui-table mb-0 flow-table" style="font-size:13px">
+      <thead><tr>
+        <th style="width:220px">流程</th>
+        <th style="width:150px">类型 / 端</th>
+        <th style="width:66px">权重</th>
+        <th style="width:70px">步骤</th>
+        <th>流程总览</th>
+        <th style="width:90px">执行</th>
+        <th style="width:170px">操作</th>
+      </tr></thead>
+      <tbody>
+      {% for f in flows %}
+      <tr data-dlg="dlg-{{ f.code }}" title="点击查看流程完整信息" {% if not f.enabled %}class="table-light text-muted"{% endif %}>
+        <td>
+          <a href="/scenarios/{{ f.pk }}/" class="fw-bold {% if not f.enabled %}text-muted{% endif %}" style="font-size:13.5px" onclick="event.stopPropagation()">{{ f.name }}</a>
+          <span class="text-slate-400" style="font-size:11.5px;font-weight:400">(<a class="text-slate-400" href="/scenarios/{{ f.pk }}/" onclick="event.stopPropagation()">{{ f.code }}</a>)</span>
+        </td>
+        <td>
+          {% if f.is_doc %}<span class="ui-badge ui-badge-amber">页面创建</span>{% else %}<span class="ui-badge ui-badge-slate">内置流程</span>{% endif %}
+          {% for e in f.ends %}{% if e == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>{% else %}<span class="ui-badge ui-badge-green">WAP</span>{% endif %}{% endfor %}
+          {% if f.enabled %}<span class="ui-badge ui-badge-green">启用</span>{% else %}<span class="ui-badge ui-badge-red">停用</span>{% endif %}
+        </td>
+        <td>
+          {% if f.weight %}
+          <button class="ui-badge ui-badge-blue border-0" style="cursor:pointer" title="权重 {{ f.weight }}（点击修改）——数值越大越靠前"
+                  onclick="openWeight({{ f.pk }}, '{{ f.code|escapejs }}', {{ f.weight }})">{{ f.weight }}</button>
+          {% else %}
+          <button class="ui-badge ui-badge-slate border-0 text-slate-400" style="cursor:pointer" title="未设权重——按创建时间倒序排列（点击设置权重）"
+                  onclick="openWeight({{ f.pk }}, '{{ f.code|escapejs }}', 0)">按时间</button>
+          {% endif %}
+        </td>
+        <td>{{ f.steps|length }} 步</td>
+        <td class="text-slate-400">{{ f.brief|default:'-' }}</td>
+        <td>
+          <a class="ui-btn ui-btn-sm py-0" href="/campaigns/new/?scenario={{ f.code }}" onclick="event.stopPropagation()">发起</a>
+        </td>
+        <td class="text-nowrap" onclick="event.stopPropagation()">
+          <button class="ui-btn ui-btn-sm py-0" onclick="openRename({{ f.pk }}, '{{ f.code|escapejs }}', '{{ f.name|escapejs }}')">改名</button>
+          <form method="post" action="/scenarios/{{ f.pk }}/toggle/" class="d-inline">{% csrf_token %}
+            <button type="submit" class="btn btn-outline-{% if f.enabled %}warning{% else %}success{% endif %} btn-sm py-0">{% if f.enabled %}停用{% else %}启用{% endif %}</button>
+          </form>
+          <form method="post" action="/scenarios/{{ f.pk }}/delete/" class="d-inline">{% csrf_token %}
+            <button type="submit" class="ui-btn ui-btn-danger ui-btn-sm py-0" onclick="return confirm('确定删除流程「{{ f.code }}」？\n将连同 {{ f.version }} 个历史版本一起删除，不可恢复！')">删除</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">暂无流程</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for f in flows %}
+<dialog class="flow-dlg" id="dlg-{{ f.code }}">
+  <div class="dlg-head">
+    <div>
+      <b style="font-size:15px">{{ f.name }}</b>
+      <span class="text-slate-400" style="font-size:12px;font-weight:400">(<a class="text-slate-400" href="/scenarios/{{ f.pk }}/">{{ f.code }}</a>)</span>
+      {% for e in f.ends %}{% if e == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>{% else %}<span class="ui-badge ui-badge-green">WAP</span>{% endif %}{% endfor %}
+      <span class="ui-badge ui-badge-slate border">v{{ f.version }} · {{ f.status }}</span>
+      {% if f.weight %}<span class="ui-badge ui-badge-blue">权重 {{ f.weight }}</span>{% endif %}
+      <span class="ui-badge ui-badge-slate border" title="创建时间（未设权重时按此倒序排列）">建于 {{ f.created_at|date:'Y-m-d H:i' }}</span>
+      {% if f.requires_auth %}<span class="ui-badge ui-badge-dark">需登录</span>{% endif %}
+      {% if f.mutating %}<span class="ui-badge ui-badge-red">写操作</span>{% endif %}
+    </div>
+    <div class="d-flex gap-1">
+      <a class="ui-btn ui-btn-sm py-0" href="/campaigns/new/?scenario={{ f.code }}">发起</a>
+      <button class="ui-btn ui-btn-sm py-0" onclick="this.closest('dialog').close()">关闭 ✕</button>
+    </div>
+  </div>
+  <div class="dlg-body">
+    <div class="mb-2" style="font-size:13px"><b>流程说明：</b>{{ f.desc }}</div>
+    {% if f.spec %}<div class="mb-2 small text-muted">执行入口：<code>{{ f.spec }}</code>{% if not f.is_doc %}（双端共用，Playwright project 决定浏览器）{% endif %}</div>{% endif %}
+
+    {% if f.steps %}
+    <div class="small fw-bold mb-1">流程总览：{{ f.brief }}</div>
+    <h6 class="small text-muted mb-1">环节明细（{{ f.steps|length }} 步）</h6>
+    <table class="ui-table mb-2 flow-step-table">
+      <thead><tr><th style="width:44px">#</th><th style="width:64px">环节</th><th style="width:56px">端</th><th>名称 / 预期</th><th style="width:280px">页面路径</th></tr></thead>
+      <tbody>
+      {% for s in f.steps %}
+      <tr>
+        <td>{{ s.seq }}</td>
+        <td>{% if s.id != '-' %}<span class="ui-badge ui-badge-slate">{{ s.id }}</span>{% else %}-{% endif %}</td>
+        <td>{% if s.side %}<span class="ui-badge ui-badge-slate border">{{ s.side }}</span>{% else %}-{% endif %}</td>
+        <td>
+          <div>{{ s.name }}</div>
+          {% if s.expect %}<div class="text-slate-400" style="font-size:11.5px">预期：{{ s.expect }}</div>{% endif %}
+        </td>
+        <td>
+          {% for pg in s.pages %}<div><code class="flow-path-key">{{ pg.call }}</code> <code>{{ pg.path }}</code></div>{% endfor %}
+          {% if not s.pages %}<span class="text-slate-400">-</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-muted small mb-2">（该流程无结构化步骤，步骤见源码 test 块）</div>
+    {% endif %}
+
+    {% if f.pages %}
+    <div class="mb-2">
+      <span class="small text-muted">涉及页面：</span>
+      {% for k, v in f.pages.items %}<span class="ui-badge ui-badge-slate border" title="站点档案键：{{ k }}"><code>{{ v }}</code></span> {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="ref-cases border rounded p-2 ui-badge-slate">
+      <div class="small fw-bold mb-1">引用的测试用例（{{ f.ref_cases|length }} 个）—— 本流程在测试中按下列用例的步骤与预期执行</div>
+      {% for rc in f.ref_cases %}
+      <div class="d-flex align-items-center flex-wrap gap-2 py-1" style="font-size:13px">
+        <span class="badge {% if rc.source == '页面创建' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">{{ rc.source }}</span>
+        <a href="/scenarios/cases/#case-{{ rc.code }}"><b>{{ rc.code }}</b></a>
+        <span>{{ rc.name }}</span>
+        <span class="text-slate-400">{{ rc.step_count }} 步 · {{ rc.impl }}</span>
+        <a class="ui-btn ui-btn-sm py-0" href="/scenarios/cases/#case-{{ rc.code }}">查看用例详情</a>
+      </div>
+      {% empty %}
+      <div class="text-slate-400 text-[11.5px]">（未引用测试用例）</div>
+      {% endfor %}
+      {% if not f.is_doc and f.reusable is not None %}
+        {% if f.reusable %}<span class="ui-badge ui-badge-green mt-1">用例可复用其他网站</span>{% else %}<span class="ui-badge ui-badge-red mt-1">用例复用性不达标</span>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+</dialog>
+{% endfor %}
+
+<!-- 改名弹窗（2026-11-02 ian：流程库支持自定义流程名称） -->
+<dialog class="flow-dlg" id="renameDlg" style="width:min(92vw,440px)">
+  <form method="post" action="" id="renameForm">
+    {% csrf_token %}
+    <div class="dlg-head">
+      <b>修改流程名称</b>
+      <button type="button" class="btn-close" onclick="document.getElementById('renameDlg').close()"></button>
+    </div>
+    <div class="dlg-body">
+      <div class="mb-2 small text-muted" id="renameCode"></div>
+      <input class="ui-input" name="name" id="renameInput" maxlength="200" required placeholder="输入新的流程名称">
+      <div class="ui-hint">名称用于页面展示；流程编码（code）保持不变，不影响执行与历史记录。</div>
+    </div>
+    <div class="p-3 pt-0 d-flex gap-2 justify-content-end">
+      <button type="button" class="ui-btn ui-btn-sm" onclick="document.getElementById('renameDlg').close()">取消</button>
+      <button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">保存名称</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 权重设置弹窗（2026-11-04 ian：设了权重按权重排序，未设按创建时间倒序） -->
+<dialog class="flow-dlg" id="weightDlg" style="width:min(92vw,440px)">
+  <form method="post" action="" id="weightForm">
+    {% csrf_token %}
+    <div class="dlg-head">
+      <b>设置流程权重</b>
+      <button type="button" class="btn-close" onclick="document.getElementById('weightDlg').close()"></button>
+    </div>
+    <div class="dlg-body">
+      <div class="mb-2 small text-muted" id="weightCode"></div>
+      <input class="ui-input" type="number" name="weight" id="weightInput" min="0" max="9999" step="1" placeholder="0 ~ 9999（留空或 0 = 不设权重）">
+      <div class="ui-hint">排序规则：设了权重（&gt;0）的流程排在前面，数值越大越靠前；未设权重的按创建时间从新到旧排列。</div>
+    </div>
+    <div class="p-3 pt-0 d-flex gap-2 justify-content-end">
+      <button type="button" class="ui-btn ui-btn-sm" onclick="document.getElementById('weightDlg').close()">取消</button>
+      <button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">保存权重</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* 行点击 → 弹出该流程悬浮窗；遮罩点击关闭 */
+document.querySelectorAll('.flow-table tr[data-dlg]').forEach(function (tr) {
+  tr.addEventListener('click', function () {
+    var dlg = document.getElementById(tr.getAttribute('data-dlg'));
+    if (dlg) dlg.showModal();
+  });
+});
+document.querySelectorAll('dialog.flow-dlg').forEach(function (dlg) {
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+});
+/* 改名弹窗：填 pk/code/name 后打开 */
+function openRename(pk, code, name) {
+  document.getElementById('renameForm').action = '/scenarios/' + pk + '/rename/';
+  document.getElementById('renameCode').textContent = '流程编码：' + code;
+  document.getElementById('renameInput').value = name;
+  document.getElementById('renameDlg').showModal();
+  setTimeout(function () { document.getElementById('renameInput').focus(); }, 50);
+}
+/* 权重弹窗：填 pk/code/weight 后打开（2026-11-04 ian） */
+function openWeight(pk, code, weight) {
+  document.getElementById('weightForm').action = '/scenarios/' + pk + '/weight/';
+  document.getElementById('weightCode').textContent = '流程编码：' + code + (weight ? '（当前权重 ' + weight + '）' : '（当前未设权重，按创建时间倒序）');
+  document.getElementById('weightInput').value = weight || '';
+  document.getElementById('weightDlg').showModal();
+  setTimeout(function () { document.getElementById('weightInput').focus(); }, 50);
+}
+</script>
+{% endblock %}

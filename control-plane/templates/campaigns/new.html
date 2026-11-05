@@ -1,0 +1,364 @@
+{% extends 'base.html' %}{% block title %}发起测试{% endblock %}
+{% load campaigns_extras %}
+{% block content %}
+<style>
+  .path-input.path-changed { border-color: #f0ad4e !important; background: #fffbeb; box-shadow: 0 0 0 .15rem rgba(240,173,78,.15); }
+  .step-sec summary::-webkit-details-marker { color: #6c757d; }
+  /* ---- 字号统一（2026-11-04 ian：对齐全站 13px 正文 / 11.5px 辅助规格） ---- */
+  #newForm { font-size: 13px; }
+  #newForm .form-check-label { font-size: 13px; }
+  #newForm .small { font-size: 11.5px; }
+  #newForm code { font-size: 11.5px; }
+  #newForm h6, #newForm .fw-bold { font-size: inherit; }
+  /* ---- flow 流程板块组件样式（换肤时遗失，2026-11-04 重建 + 字号对齐） ---- */
+  .flow-map { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 7px 10px; margin: 6px 0 8px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; }
+  .flow-map-label { color: #64748b; font-size: 11.5px; flex-shrink: 0; }
+  .flow-map-node { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #fff;
+    border: 1px solid #dbeafe; border-radius: 999px; color: #1d4ed8; text-decoration: none; font-size: 12px; white-space: nowrap; }
+  .flow-map-node:hover { background: #eff6ff; }
+  .flow-map-id { font-weight: 600; font-size: 11px; color: #2563eb; }
+  .flow-map-arrow { color: #94a3b8; font-size: 12px; }
+  .flow-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; margin: 4px 0 6px; }
+  .flow-step { min-width: 0; }
+  .flow-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; cursor: pointer;
+    transition: box-shadow .15s, border-color .15s; }
+  .flow-card:hover { border-color: #bfdbfe; box-shadow: 0 2px 10px rgba(15,23,42,.06); }
+  .flow-card-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .flow-seq { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #2563eb; color: #fff;
+    font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+  .flow-title { font-weight: 600; font-size: 13px; color: #0f172a; order: 2; }
+  .flow-caret { color: #94a3b8; font-size: 11px; transition: transform .15s; order: 9; margin-left: 0; }
+  .flow-card.is-open .flow-caret { transform: rotate(180deg); }
+  .flow-summary { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; font-size: 11.5px; }
+  .flow-path-badge { display: inline-flex; padding: 1px 6px; background: #f1f5f9; border-radius: 5px; }
+  .flow-detail { display: none; }
+  .flow-card.is-open .flow-detail { display: block; }
+  .flow-card.is-open .flow-summary { display: none; }
+  .flow-card-body { margin-top: 2px; padding-top: 6px; border-top: 1px dashed #e2e8f0; font-size: 12.5px; }
+  .flow-path-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; flex-wrap: wrap; }
+  .flow-path-key { font-size: 11px; color: #2563eb; flex-shrink: 0; }
+  .flow-link-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .flow-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: 100%; padding: 2px 8px;
+    border-radius: 999px; font-size: 11.5px; text-decoration: none; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; }
+  .flow-chip-prev:hover, .flow-chip-next:hover { background: #eff6ff; border-color: #bfdbfe; }
+  .flow-chip-tag { font-size: 10.5px; color: #2563eb; font-weight: 600; }
+  .flow-chip-none { color: #94a3b8; background: #fff; }
+  .flow-chip code { font-size: 10.5px; color: #64748b; }
+  .flow-flash .flow-card { animation: flowFlash 1.8s ease; }
+  @keyframes flowFlash { 0%, 60% { box-shadow: 0 0 0 3px rgba(37,99,235,.3); border-color: #2563eb; } 100% { box-shadow: none; } }
+</style>
+<h4>发起测试 <span class="text-muted fs-6">（选择用例 × 网站 × 测试端，按用例自定义设置）</span></h4>
+<form method="post" id="newForm">{% csrf_token %}
+<div class="mb-3"><label class="ui-label">Campaign 名称</label><input name="name" class="ui-input" placeholder="留空自动命名"></div>
+
+<div class="row mb-3"><div class="col">
+<label class="ui-label d-block">测试端（每端各生成一个 Job）</label>
+<div class="form-check form-check-inline">
+  <input class="ui-check" type="checkbox" name="ends" value="pc" id="endPC" checked>
+  <label class="form-check-label" for="endPC">PC 端（桌面视口）</label>
+</div>
+<div class="form-check form-check-inline">
+  <input class="ui-check" type="checkbox" name="ends" value="wap" id="endWAP">
+  <label class="form-check-label" for="endWAP">WAP 端（手机视口 /wap#）</label>
+</div>
+</div></div>
+
+<div class="row"><div class="col-lg-4">
+<h6>网站 <span class="text-slate-400 text-[11.5px]">（各端域名已按站点配置自动生效）</span></h6>
+{% for s in sites %}
+<div class="ui-card mb-2">
+  <div class="ui-card-body py-2">
+    <div class="form-check mb-1">
+      <input class="ui-check" type="checkbox" name="site_ids" value="{{ s.pk }}" id="s{{ s.pk }}">
+      <label class="form-check-label" for="s{{ s.pk }}"><b>{{ s.name }}</b>（{{ s.code }}）</label>
+    </div>
+    <div class="small text-muted ps-4">
+      {{ s.pc_base_url|default:s.base_url }}<br>
+      {% if s.wap_base_url %}{{ s.wap_base_url }}<br>{% endif %}
+      {% if s.boss_base_url %}{{ s.boss_base_url }}{% endif %}
+    </div>
+  </div>
+</div>
+{% empty %}<div class="ui-alert ui-alert-warning">暂无启用网站，请先到 <a href="/sites/new/">网站管理 → 新增网站</a> 创建。</div>{% endfor %}
+<div class="text-muted small mt-1">新网站入口：<a href="/sites/new/">新增网站</a> · 域名修改：<a href="/sites/">网站管理</a></div>
+</div>
+
+<div class="col-lg-8">
+<div class="d-flex justify-content-between align-items-center">
+<h6 class="mb-0">测试用例（勾选后可修改该用例的自定义设置）</h6>
+<div class="btn-group btn-group-sm" role="group">
+  <button type="button" class="ui-btn" id="selAllCases">全选用例</button>
+  <button type="button" class="ui-btn" id="selNoCases">取消全选</button>
+</div>
+</div>
+{% for item in scenarios %}
+<div class="ui-card mb-2 scenario-card">
+  <div class="ui-card-body py-2">
+    <div class="form-check">
+      <input class="ui-check sc-check" type="checkbox" name="scenario_ids" value="{{ item.ver.scenario_id }}" id="sc{{ item.ver.scenario_id }}" data-code="{{ item.ver.scenario.code }}"
+        {% if request.GET.scenario == item.ver.scenario.code %}checked{% endif %}>
+      <label class="form-check-label" for="sc{{ item.ver.scenario_id }}">
+        <b>{{ item.ver.scenario.code }}</b> · {{ item.ver.scenario.name }}（v{{ item.ver.version }}）
+        {% for e in item.ends %}{% if e == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>{% else %}<span class="ui-badge ui-badge-green">WAP</span>{% endif %}{% endfor %}
+        {% if item.ver.definition.mutating %}<span class="ui-badge ui-badge-red">真实交易</span>{% endif %}
+      </label>
+      <div class="text-muted small ms-4"><code>{{ item.spec }}</code></div>
+    </div>
+    <div class="sc-settings ms-4 {% if request.GET.scenario != item.ver.scenario.code %}d-none{% endif %}" data-code="{{ item.ver.scenario.code }}">
+      {% if item.settings %}
+      <hr class="my-2"><b class="text-[11.5px]">该用例的自定义设置：</b>
+      {% for f in item.settings %}
+      <div class="row g-1 align-items-center mb-1">
+        <div class="col-auto" style="min-width:280px">
+          {% if f.type == 'bool' %}
+          <div class="form-check"><input class="ui-check" type="checkbox" name="set_{{ item.ver.scenario.code }}_{{ f.key }}" id="set_{{ item.ver.scenario.code }}_{{ f.key }}" {% if f.default %}checked{% endif %}><label class="form-check-label small" for="set_{{ item.ver.scenario.code }}_{{ f.key }}">{{ f.label }}</label></div>
+          {% else %}
+          <label class="small mb-0">{{ f.label }}</label>
+          {% endif %}
+        </div>
+        {% if f.type == 'select' %}
+        <div class="col"><select class="ui-select" name="set_{{ item.ver.scenario.code }}_{{ f.key }}">
+          {% for opt in f.choices %}<option value="{{ opt }}" {% if opt == f.default %}selected{% endif %}>{{ opt }}</option>{% endfor %}
+        </select></div>
+        {% elif f.type == 'number' %}
+        <div class="col"><input type="number" class="ui-input" name="set_{{ item.ver.scenario.code }}_{{ f.key }}" value="{{ f.default|default:'' }}"></div>
+        {% elif f.type != 'bool' %}
+        <div class="col"><input class="ui-input" name="set_{{ item.ver.scenario.code }}_{{ f.key }}" value="{{ f.default|default:'' }}"></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}<div class="text-slate-400 text-[11.5px]">（该用例无可修改的设置）</div>{% endif %}
+      {# —— 测试环节流程板块（2026-10-23 ian：每个路径做成流程板块、板块与上一板块衔接、直观看上一步/下一步用例与路径） —— #}
+      <hr class="my-2">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-1 mb-1">
+        <b class="text-[11.5px]">测试流程 · 环节板块（{{ item.steps|length }} 步 · 点击卡片看详情，路径可改）</b>
+        <span class="text-slate-400 text-[11.5px]">
+          <a href="javascript:void(0)" class="flow-toggle-board" data-board="{{ item.ver.scenario.code }}" data-open="1">展开全部</a>
+          · <a href="javascript:void(0)" class="flow-toggle-board" data-board="{{ item.ver.scenario.code }}" data-open="0">收起全部</a>
+          · 默认 = 固化流程档案地址 · 修改仅本次发起生效
+        </span>
+      </div>
+      {% if item.steps %}
+      <div class="flow-map">
+        <span class="flow-map-label">流程总览：</span>
+        {% for st in item.steps %}
+        <a class="flow-map-node" href="#fc-{{ item.ver.scenario.code }}-{{ st.seq }}" title="{{ st.id }} {{ st.name }}"><span class="flow-map-id">{{ st.id }}</span>&nbsp;{{ st.name|truncatechars:12 }}</a>
+        {% if not forloop.last %}<span class="flow-map-arrow">→</span>{% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if item.steps %}
+      <div class="flow-board" data-flow="{{ item.ver.scenario.code }}" data-min="280" data-max="4">
+        {% for st in item.steps %}
+        <div class="flow-step" id="fc-{{ item.ver.scenario.code }}-{{ st.seq }}" data-seq="{{ st.seq }}">
+          <div class="flow-card" title="点击卡片展开 / 收起完整详情">
+            <div class="flow-card-head">
+              <span class="flow-seq">{{ st.seq }}</span>
+              {% if st.id != '-' %}<span class="ui-badge ui-badge-slate">{{ st.id }}</span>{% endif %}
+              {% if st.side == '前台' %}<span class="ui-badge ui-badge-blue">{{ st.side }}</span>
+              {% elif st.side == '后台' %}<span class="ui-badge ui-badge-dark">{{ st.side }}</span>
+              {% elif st.side %}<span class="ui-badge ui-badge-green">{{ st.side }}</span>{% endif %}
+              <span class="text-muted small ms-auto">{{ st.pages|length }} 路径 · 共 {{ st.total }} 步</span>
+              <span class="flow-caret">▼</span>
+              <span class="flow-title">{{ st.name }}</span>
+            </div>
+            <div class="flow-summary">
+              {% for pg in st.pages %}<span class="flow-path-badge"><code>{{ pg.path }}</code></span>{% endfor %}
+              {% if not st.pages %}<span class="text-slate-400 text-[11.5px]">无固化页面路径</span>{% endif %}
+            </div>
+            <div class="flow-detail">
+              <div class="flow-card-body">
+                {% if st.expect %}<div class="small text-muted mb-1">测试用例预期：{{ st.expect }}</div>{% endif %}
+                {% for pg in st.pages %}
+                <div class="flow-path-row">
+                  <code class="flow-path-key">{{ pg.call }}</code>
+                  <input class="ui-input path-input" name="path__{{ item.ver.scenario.code }}__{{ pg.fn }}__{{ pg.key }}" value="{{ pg.path }}" data-default="{{ pg.path }}" placeholder="档案未定义，请填以 / 开头的路径">
+                </div>
+                {% endfor %}
+                {% if not st.pages %}<div class="text-slate-400 text-[11.5px]">该环节无固化页面路径（复用已打开页面 / 接口直调，或由动作适配层自动寻址），无需修改。</div>{% endif %}
+              </div>
+              <div class="flow-link-row">
+                {% if st.prev %}
+                <a class="flow-chip flow-chip-prev" href="#fc-{{ item.ver.scenario.code }}-{{ st.prev.seq }}" title="上一步：{{ st.prev.id }} {{ st.prev.name }}">
+                  <span class="flow-chip-tag">← 上一步</span>{% if st.prev.id != '-' %}{{ st.prev.id }} {% endif %}{{ st.prev.name|truncatechars:24 }}{% if st.prev.paths %}<code>{{ st.prev.paths|join:' · ' }}</code>{% endif %}
+                </a>
+                {% else %}<span class="flow-chip flow-chip-none">◉ 流程起点</span>{% endif %}
+                {% if st.next %}
+                <a class="flow-chip flow-chip-next" href="#fc-{{ item.ver.scenario.code }}-{{ st.next.seq }}" title="下一步：{{ st.next.id }} {{ st.next.name }}">
+                  <span class="flow-chip-tag">下一步 →</span>{% if st.next.id != '-' %}{{ st.next.id }} {% endif %}{{ st.next.name|truncatechars:24 }}{% if st.next.paths %}<code>{{ st.next.paths|join:' · ' }}</code>{% endif %}
+                </a>
+                {% else %}<span class="flow-chip flow-chip-none">◎ 流程终点</span>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-slate-400 text-[11.5px]">（该用例未提供结构化环节，执行时按 spec 源码流程走）</div>
+      {% endif %}
+      <div class="text-muted small mt-1">注意：地址默认取固化流程档案（config/sites.json）；此处修改<b>仅本次 Campaign 生效</b>，不改档案。要长期生效请修订测试用例流程 / 站点档案。</div>
+    </div>
+  </div>
+</div>
+{% empty %}<div class="ui-alert ui-alert-warning">暂无已发布用例，请先在流程库发布。</div>{% endfor %}
+</div></div>
+
+<!-- 全链选品方向（2026-10-09 ian：关键词/链接/图片三方向 × 用例库/手动填写） -->
+<div class="ui-card mt-3" id="pickCard" style="display:none">
+  <div class="ui-card-head">全链选品方向（勾选 full-chain 用例时生效，当前仅 PC 端）</div>
+  <div class="ui-card-body py-2">
+    <div class="row g-2 align-items-center mb-2">
+      <div class="col-auto small fw-bold">选品方向</div>
+      <div class="col-auto form-check form-check-inline"><input class="ui-check" type="radio" name="pick_mode" value="keyword" id="pmKeyword" checked><label class="form-check-label" for="pmKeyword">关键词搜索（结果列表随机选品）</label></div>
+      <div class="col-auto form-check form-check-inline"><input class="ui-check" type="radio" name="pick_mode" value="link" id="pmLink"><label class="form-check-label" for="pmLink">链接搜索（贴链接直达详情）</label></div>
+      <div class="col-auto form-check form-check-inline"><input class="ui-check" type="radio" name="pick_mode" value="image" id="pmImage"><label class="form-check-label" for="pmImage">图片搜索（以图搜图结果列表随机选品）</label></div>
+    </div>
+    <div class="row g-2 align-items-center mb-2">
+      <div class="col-auto small fw-bold">素材来源</div>
+      <div class="col-auto form-check form-check-inline"><input class="ui-check" type="radio" name="pick_source" value="library" id="psLib" checked><label class="form-check-label" for="psLib">测试用例（下方对应类型勾选优先，未勾随机抽 3 条）</label></div>
+      <div class="col-auto form-check form-check-inline"><input class="ui-check" type="radio" name="pick_source" value="manual" id="psManual"><label class="form-check-label" for="psManual">手动填写（每行一条，优先生效）</label></div>
+    </div>
+    <textarea name="pick_manual" id="pickManual" class="ui-input d-none" rows="3" placeholder="每行一个搜索关键词"></textarea>
+    <details class="ui-fold mt-1"><summary>三种选品方向规则</summary><div class="ui-fold-body">关键词/图片方向 = 站内搜索结果列表<b>随机选商品</b>进详情下单；链接方向 = 搜索框贴商品链接<b>直达详情</b>（1688 / 淘宝 / 微店均支持）。不配置方向时全链沿用旧方式（站点档案 1688 编号直连，仅认 1688 格式）。</div></details>
+  </div>
+</div>
+
+<!-- 测试用例（2026-10-08 ian：发起时勾选指定素材；不勾=按类型随机抽取） -->
+<div class="ui-card mt-3">
+  <div class="ui-card-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span>测试用例（素材池）</span>
+    <div class="btn-group btn-group-sm">
+      <button type="button" class="ui-btn" id="selAllLib">全选素材</button>
+      <button type="button" class="ui-btn" id="selNoLib">全不选（随机）</button>
+    </div>
+  </div>
+  <div class="ui-card-body py-2">
+    <p class="text-muted small mb-2">勾选 = 本轮指定使用这些素材；<b>不勾选 = 每类从库中随机抽取（最多 3 条）</b>注入用例环境变量。库为空或未启用条目时回退站点档案默认值。<a href="/library/" target="_blank">管理测试用例</a></p>
+    <div class="row g-3">
+      {% for k, label in lib_labels.items %}
+      <div class="col-12 col-xl-4">
+        <div class="border rounded p-2 h-100">
+          <div class="small fw-bold mb-1">{{ label }}（启用 {{ lib_counts_enabled|get_item:k }} 条，随机 {{ lib_counts_enabled|get_item:k|default:0 }}）</div>
+          {% if k == 'link' %}<details class="ui-fold mb-1"><summary>链接格式说明</summary><div class="ui-fold-body">「链接搜索」方向支持 1688/淘宝/微店等任意商品链接；仅旧直连模式（未配置选品方向）要求 1688 offer 链接或纯编号。</div></details>{% endif %}
+          {% if k == 'keyword' %}<div class="text-muted small mb-1">关键词对含搜索步骤的用例生效（加购/购物车/收藏/WAP全链/全链-关键词方向）。</div>{% endif %}
+          <div style="max-height:200px;overflow:auto">
+            {% for it in lib_groups|get_item:k %}
+            <div class="form-check {% if not it.enabled %}opacity-50{% endif %}">
+              <input class="ui-check lib-check" type="checkbox" name="lib_{{ k }}" value="{{ it.pk }}" id="lib{{ k }}{{ it.pk }}" {% if not it.enabled %}disabled{% endif %}>
+              <label class="form-check-label small text-truncate d-inline-block" style="max-width:92%" for="lib{{ k }}{{ it.pk }}" title="{{ it.value }}">{{ it.value|truncatechars:60 }}</label>
+            </div>
+            {% empty %}
+            <div class="text-muted small py-2">（库中无{{ label }}——到 <a href="/library/" target="_blank">测试用例</a> 添加）</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Policy 安全基线（2026-10-15 ian：规则包生效于测试流程；locked 包强制注入不可取消） -->
+<div class="ui-card mt-3">
+  <div class="ui-card-head bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span>Policy 安全基线（本轮注入的规则包）</span>
+    <a class="ui-btn ui-btn-sm py-0" href="/policies/" target="_blank">管理规则包</a>
+  </div>
+  <div class="ui-card-body py-2">
+    <p class="text-muted small mb-2">勾选的规则包将注入每个 Job 的执行环境（<code>POLICY_PACKS / POLICY_RULES</code>），Job 日志记录遵循的规则，Campaign 报告呈现安全基线章节。<b class="text-danger">锁定的基线包强制注入，不可取消。</b></p>
+    {% for p in policies %}
+    <div class="form-check">
+      <input class="ui-check" type="checkbox" name="policy_codes" value="{{ p.code }}" id="pol{{ p.pk }}"
+             {% if p.locked %}checked disabled{% endif %}>
+      <label class="form-check-label small" for="pol{{ p.pk }}">
+        <b>{{ p.code }}</b> · {{ p.name }}
+        {% if p.locked %}<span class="ui-badge ui-badge-dark">强制注入</span>{% endif %}
+        <span class="ui-badge ui-badge-slate border">v{{ p.version }}</span>
+      </label>
+    </div>
+    {% empty %}
+    <div class="text-muted small py-2">（无规则包——到 <a href="/policies/" target="_blank">Policy</a> 新建）</div>
+    {% endfor %}
+  </div>
+</div>
+
+<button class="ui-btn ui-btn-primary mt-3" data-slow="1" data-loading="发起中…" data-hint="正在创建 Campaign 并投递执行队列">创建并投递执行</button>
+</form>
+<script>
+/* 卡片点击展开/收起（2026-11-04 重建：换肤时委托丢失；排除表单元素防误触） */
+document.addEventListener('click', function (e) {
+  if (e.target.closest('input, a, button, label, select, textarea')) return;
+  var card = e.target.closest('.flow-card');
+  if (card) card.classList.toggle('is-open');
+});
+/* 环节地址修改高亮（2026-10-20 ian：值 ≠ 固化默认 → 黄色高亮，提示仅本次生效） */
+document.querySelectorAll('.path-input').forEach(function (inp) {
+  var mark = function () {
+    inp.classList.toggle('path-changed', inp.value.trim() !== (inp.dataset.default || '').trim());
+  };
+  inp.addEventListener('input', mark);
+  mark();
+});
+document.getElementById('selAllLib').onclick = function () {
+  document.querySelectorAll('.lib-check').forEach(function (c) { if (!c.disabled) c.checked = true; });
+};
+document.getElementById('selNoLib').onclick = function () {
+  document.querySelectorAll('.lib-check').forEach(function (c) { c.checked = false; });
+};
+document.querySelectorAll('.sc-check').forEach(function (cb) {
+  cb.addEventListener('change', function () {
+    var box = document.querySelector('.sc-settings[data-code="' + cb.dataset.code + '"]');
+    if (box) box.classList.toggle('d-none', !cb.checked);
+  });
+});
+/* 一键全选/取消全选用例（ian 2026-09-24） */
+function setAllCases(on) {
+  document.querySelectorAll('.sc-check').forEach(function (cb) {
+    cb.checked = on;
+    var box = document.querySelector('.sc-settings[data-code="' + cb.dataset.code + '"]');
+    if (box) box.classList.toggle('d-none', !on);
+  });
+}
+document.getElementById('selAllCases').onclick = function () { setAllCases(true); };
+document.getElementById('selNoCases').onclick = function () { setAllCases(false); };
+/* 全链选品方向卡片联动（2026-10-09 ian）：勾 full-chain 显卡片；手动填写显隐 + placeholder 随方向切换 */
+function refreshPickCard() {
+  var fc = Array.prototype.some.call(document.querySelectorAll('.sc-check'), function (cb) { return cb.checked && /full-chain/.test(cb.dataset.code || ''); });
+  document.getElementById('pickCard').style.display = fc ? '' : 'none';
+  var manual = document.getElementById('psManual').checked;
+  var mode = (document.querySelector('input[name="pick_mode"]:checked') || {}).value || 'keyword';
+  var ta = document.getElementById('pickManual');
+  ta.classList.toggle('d-none', !manual);
+  ta.placeholder = mode === 'keyword' ? '每行一个搜索关键词，如：蓝牙耳机'
+    : mode === 'link' ? '每行一个商品链接（1688/淘宝/微店），如：https://item.taobao.com/item.htm?id=…'
+    : '每行一个图片 URL（以图搜图素材），如：https://cdn.example.com/shoes.jpg';
+}
+document.querySelectorAll('.sc-check').forEach(function (cb) { cb.addEventListener('change', refreshPickCard); });
+document.querySelectorAll('input[name="pick_mode"], input[name="pick_source"]').forEach(function (r) { r.addEventListener('change', refreshPickCard); });
+refreshPickCard();
+/* 流程总览 / 上一步 / 下一步 跳转：滚动定位 + 闪烁 + 自动展开目标卡片详情（2026-10-23 ian） */
+document.querySelectorAll('.flow-map-node, .flow-chip-prev, .flow-chip-next').forEach(function (a) {
+  a.addEventListener('click', function () {
+    var id = (a.getAttribute('href') || '').slice(1);
+    var step = id && document.getElementById(id);
+    if (!step) return;
+    var card = step.querySelector('.flow-card');
+    if (card) card.classList.add('is-open');
+    step.classList.add('flow-flash');
+    setTimeout(function () { step.classList.remove('flow-flash'); }, 1800);
+  });
+});
+/* 展开全部 / 收起全部（按用例 board） */
+document.querySelectorAll('.flow-toggle-board').forEach(function (a) {
+  a.addEventListener('click', function () {
+    var board = document.querySelector('.flow-board[data-flow="' + a.dataset.board + '"]');
+    if (!board) return;
+    board.querySelectorAll('.flow-card').forEach(function (c) {
+      c.classList.toggle('is-open', a.dataset.open === '1');
+    });
+  });
+});
+</script>
+{% endblock %}

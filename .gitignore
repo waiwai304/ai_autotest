@@ -1,0 +1,16 @@
+# ---- 运行数据 / 已配置数据（不入库）----
+web-blackbox/output/
+web-blackbox/test-results/
+web-blackbox/node_modules/
+web-blackbox/config/sites.json
+**/__pycache__/
+**/*.pyc
+control-plane/staticfiles/
+control-plane/backups/
+**/backups/
+**/.env
+**/*.sqlite*
+**/*.log
+media/
+static-data/
+data/

@@ -1,0 +1,369 @@
+{% extends 'base.html' %}{% load campaigns_extras %}{% block title %}AI 建用例{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-1">
+  <h4 class="mb-0">AI 口语建用例</h4>
+  <div>
+    <a class="ui-btn ui-btn-sm" href="/scenarios/ai-config/">AI 接入设置</a>
+    <a class="ui-btn ui-btn-sm" href="/scenarios/cases/">← 返回用例说明</a>
+  </div>
+</div>
+<div class="text-muted mb-3 small">
+  <span class="ui-badge ui-badge-blue">口语描述</span> <span class="ui-badge ui-badge-green">AI 解析</span> <span class="ui-badge ui-badge-slate">确认创建</span>
+  白名单外的动作会显式标记 <span class="ui-badge ui-badge-red">待实现</span>，不会假装能跑。
+  {% if not cfg.ready %}<span class="ui-badge ui-badge-amber">Agent 未启用</span>{% endif %}
+</div>
+
+{# 主体容器：SSE 流式完成后前端整体替换（2026-11-04 ian） #}
+<div id="aiCreateRoot">
+{% if plan %}
+{% include 'scenarios/_ai_plan_form.html' %}
+{% else %}
+{# ================= 输入态 ================= #}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <b>动作原语白名单（AI 只能选用以下动作）</b>
+        <span class="text-slate-400" style="font-size:11.5px">每页
+          <select id="primPer" class="ui-select" style="width:auto;display:inline-block;padding:1px 6px;font-size:11.5px">
+            <option value="10" selected>10</option><option value="20">20</option><option value="50">50</option><option value="0">全部</option>
+          </select> 条</span>
+      </div>
+      <div class="ui-card-body p-0">
+        <table class="ui-table mb-0" style="font-size:12.5px">
+          <thead><tr><th>动作</th><th>说明</th><th>状态</th></tr></thead>
+          <tbody id="primBody">
+          {% for a in actions %}
+          <tr>
+            <td class="font-monospace">{{ a.action }}</td>
+            <td>{{ a.label }}<div class="text-slate-400" style="font-size:11.5px">{% if a.examples %}如：{{ a.examples|join:" / " }}{% endif %}</div></td>
+            <td>{% if a.status == 'ready' %}<span class="ui-badge ui-badge-green">可执行</span>{% else %}<span class="ui-badge ui-badge-slate">待实现</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <div id="primPgBar" class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2" style="border-top:1px solid #e2e8f0"></div>
+      </div>
+    </div>
+    <style>
+      .prim-pg-btn{background:#fff!important;border:1px solid #cbd5e1;border-radius:6px;min-width:28px;height:26px;padding:0 7px;font-size:12px;color:#334155;cursor:pointer}
+      .prim-pg-btn:hover:not(:disabled){border-color:#2563eb;color:#2563eb}
+      .prim-pg-btn:disabled{opacity:.4;cursor:not-allowed}
+      .prim-pg-btn.on{background:#eff6ff!important;border-color:#2563eb;color:#2563eb;font-weight:600}
+    </style>
+    <script>
+    (function(){
+      var body = document.getElementById('primBody');
+      var bar = document.getElementById('primPgBar');
+      var sel = document.getElementById('primPer');
+      if(!body || !bar || !sel) return;
+      var rows = Array.prototype.slice.call(body.children);
+      var page = 1, per = 10;
+      function render(){
+        var total = rows.length;
+        var all = per === 0;
+        var pages = all ? 1 : Math.max(1, Math.ceil(total / per));
+        if(page > pages) page = pages;
+        rows.forEach(function(r, i){ r.style.display = (all || (i >= (page-1)*per && i < page*per)) ? '' : 'none'; });
+        if(all || pages <= 1){ bar.innerHTML = '<span class="text-slate-400" style="font-size:11.5px">共 ' + total + ' 条</span>'; return; }
+        var h = '<span class="text-slate-400" style="font-size:11.5px">共 ' + total + ' 条 · ' + page + '/' + pages + ' 页</span><span class="d-flex align-items-center gap-1">';
+        h += '<button class="prim-pg-btn" data-go="' + (page-1) + '" ' + (page<=1?'disabled':'') + '>上一页</button>';
+        for(var p=1;p<=pages;p++){
+          if(pages>7 && p!==1 && p!==pages && Math.abs(p-page)>2){ if(p===2||p===pages-1) h+='<span class="text-slate-400 px-1">…</span>'; continue; }
+          h += '<button class="prim-pg-btn' + (p===page?' on':'') + '" data-go="' + p + '">' + p + '</button>';
+        }
+        h += '<button class="prim-pg-btn" data-go="' + (page+1) + '" ' + (page>=pages?'disabled':'') + '>下一页</button>';
+        h += '</span>';
+        bar.innerHTML = h;
+      }
+      bar.addEventListener('click', function(e){
+        var b = e.target.closest('.prim-pg-btn');
+        if(!b || b.disabled) return;
+        page = parseInt(b.getAttribute('data-go'), 10) || 1;
+        render();
+      });
+      sel.addEventListener('change', function(){ per = parseInt(sel.value, 10) || 0; page = 1; render(); });
+      render();
+    })();
+    </script>
+  </div>
+  <div class="col-lg-7">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white"><b>口语描述</b></div>
+      <div class="ui-card-body">
+        <form method="post" action="/scenarios/cases/ai-create/">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="parse">
+          <div class="mb-3">
+            <label class="ui-label small mb-1">目标站点</label>
+            <select class="ui-select" name="site_pk" required>
+              <option value="">— 选择站点 —</option>
+              {% for s in sites %}<option value="{{ s.pk }}" {% if s.pk|stringformat:"s" == site_pk %}selected{% endif %}>{{ s.name }}（{{ s.code }}）</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="ui-label small mb-1">用一句话或几句话描述测试流程</label>
+            <textarea class="ui-textarea" name="case_text" rows="10" required
+              placeholder="例如：先登录，搜索蓝牙耳机进第一个商品，加入购物车，然后去购物车验证商品在">{{ case_text }}</textarea>
+            <details class="ui-fold"><summary>描述技巧</summary><div class="ui-fold-body">描述越具体解析越准：可以说明先做什么、到哪个页面、做什么操作、怎么算成功。不支持的动作会被标为「待实现」而不是硬编。</div></details>
+            <details class="ui-fold mt-2"><summary>AI 调用成本预估</summary><div class="ui-fold-body">单次「AI 解析」约 <b>5~20 秒</b>、消耗约 <b>2,000~6,000 tokens</b>（取决于描述长度与站点路径表）；「探索验证」会实走网站，约需 <b>2~8 分钟</b>（不消耗额外 tokens，但占用站点测试账号锁）。解析完成后的预览页会显示本次真实耗时与 tokens 用量。</div></details>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="submit" class="ui-btn ui-btn-primary" id="aiParseBtn" {% if not cfg.ready %}disabled{% endif %}>AI 解析</button>
+          </div>
+        </form>
+        {# 2026-11-05 ian：一键自动闭环——独立表单（普通 POST，服务端同步规划后转探索详情页轮询） #}
+        <form method="post" action="/scenarios/cases/ai-create/" class="mt-3 pt-3 border-top">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="autopilot">
+          <input type="hidden" name="site_pk" id="autoSitePk" value="{{ site_pk }}">
+          <input type="hidden" name="case_text" id="autoCaseText" value="">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="text-[11.5px] text-slate-400">零介入模式：AI 规划 → 自动实走探索 → 失败自动 AI 修正再探索（最多 2 轮）→ 自动创建并发布用例。只需站点 + 一句话。</span>
+            <button type="submit" class="ui-btn ui-btn-success" id="autoPilotBtn" {% if not cfg.ready %}disabled{% endif %}>⚡ 一键自动闭环</button>
+          </div>
+        </form>
+        <script>
+        /* 自动闭环表单：提交前同步主表单的站点与描述 */
+        (function(){
+          var f = document.querySelector('form[action="/scenarios/cases/ai-create/"] + form') || document.getElementById('autoPilotBtn')?.closest('form');
+          if (!f) return;
+          f.addEventListener('submit', function(){
+            var main = document.querySelector('select[name="site_pk"]'), ta = document.querySelector('textarea[name="case_text"]');
+            if (main) f.querySelector('[name="site_pk"]').value = main.value;
+            if (ta) f.querySelector('[name="case_text"]').value = ta.value;
+            var b = document.getElementById('autoPilotBtn');
+            if (b){ b.disabled = true; b.dataset.t = b.textContent; b.textContent = 'AI 规划中…（5~30 秒，完成后自动跳转进度页）'; }
+          });
+        })();
+        </script>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+</div>
+
+{# ===== AI 解析 loading 遮罩（2026-11-04 ian：点击解析后立即可见，防「卡住无反馈」体感） ===== #}
+<div id="aiParseOverlay" aria-hidden="true">
+  <div class="ai-po-card">
+    <div class="ai-po-spinner"></div>
+    <div class="ai-po-title">AI 正在解析你的描述…</div>
+    <div class="ai-po-sub">通常 5~20 秒；模型实时输出显示在页面下方「AI 输出（实时）」卡片</div>
+    <div class="ai-po-timer" id="aiPoTimer">0.0s</div>
+  </div>
+</div>
+
+{# ===== AI 输出实时区域（2026-11-04 ian：AI 生成用例脚本时流式显示模型输出） ===== #}
+<div class="ui-card mt-3" id="aiStreamCard" style="display:none">
+  <div class="ui-card-head bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <b>AI 输出（实时）</b>
+    <span class="text-slate-400 font-monospace" id="aiStreamMeta" style="font-size:12px"></span>
+  </div>
+  <div class="ui-card-body p-0">
+    <div id="aiStreamBody">
+      <div id="aiStreamReasoning" style="display:none;padding:8px 12px;border-bottom:1px dashed #334155;color:#7d8db3;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:140px;overflow-y:auto"></div>
+      <pre id="aiStreamOut" class="mb-0" style="padding:12px;color:#e2e8f0;font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto"></pre>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extrajs %}
+<style>
+  #aiStreamCard .ui-card-body{background:#0f172a;border-radius:0 0 .5rem .5rem}
+  #aiStreamOut .ai-cursor{display:inline-block;width:7px;height:14px;background:#4ade80;vertical-align:-2px;animation:aiBlink 1s steps(1) infinite}
+  @keyframes aiBlink{50%{opacity:0}}
+  #aiStreamMeta.ai-err{color:#f87171}
+  /* AI 解析 loading 遮罩（2026-11-04 ian） */
+  #aiParseOverlay{position:fixed;inset:0;z-index:1080;background:rgba(248,250,252,.82);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center}
+  #aiParseOverlay.on{display:flex}
+  .ai-po-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 20px 50px -12px rgba(15,23,42,.18);padding:28px 36px;text-align:center;min-width:300px;max-width:88vw}
+  .ai-po-spinner{width:38px;height:38px;margin:0 auto 14px;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:aiPoSpin .8s linear infinite}
+  @keyframes aiPoSpin{to{transform:rotate(360deg)}}
+  .ai-po-title{font-size:14px;font-weight:600;color:#1e293b}
+  .ai-po-sub{font-size:11.5px;color:#94a3b8;margin-top:6px;line-height:1.5}
+  .ai-po-timer{font-size:20px;font-weight:600;color:#2563eb;margin-top:12px;font-variant-numeric:tabular-nums}
+</style>
+<script>
+/* AI 解析流式输出（2026-11-04 ian）：fetch POST SSE → 输出区实时显示模型 token，
+   完成后用服务端渲染的预览表单整体替换 #aiCreateRoot（与整页 POST 行为一致）。
+   不支持 fetch 流式的环境自动降级为原生表单提交（原逻辑不变）。 */
+(function () {
+  var STREAM_URL = '/scenarios/cases/ai-create/stream/';
+  if (!window.fetch || !window.ReadableStream || !window.TextDecoder) return;   // 降级：原生提交
+
+  var card = document.getElementById('aiStreamCard');
+  var out = document.getElementById('aiStreamOut');
+  var reasonEl = document.getElementById('aiStreamReasoning');
+  var meta = document.getElementById('aiStreamMeta');
+  var root = document.getElementById('aiCreateRoot');
+  if (!card || !out || !root) return;
+
+  /* ---- loading 遮罩（2026-11-04 ian：解析期间全屏 spinner + 计时，点击即反馈）---- */
+  var overlay = document.getElementById('aiParseOverlay');
+  var poTimer = document.getElementById('aiPoTimer');
+  var poTick = null, poT0 = 0;
+  function showOverlay() {
+    if (!overlay) return;
+    overlay.classList.add('on');
+    overlay.setAttribute('aria-hidden', 'false');
+    poT0 = Date.now();
+    if (poTimer) poTimer.textContent = '0.0s';
+    clearInterval(poTick);
+    poTick = setInterval(function () {
+      if (poTimer) poTimer.textContent = ((Date.now() - poT0) / 1000).toFixed(1) + 's';
+    }, 100);
+  }
+  function hideOverlay() {
+    if (!overlay) return;
+    clearInterval(poTick); poTick = null;
+    overlay.classList.remove('on');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+    });
+  }
+  function scrollBottom(el) { el.scrollTop = el.scrollHeight; }
+
+  function render(contentBuf, reasonBuf, streaming) {
+    var html = '';
+    if (reasonBuf) html += '<div style="color:#64748b">…思考 ' + reasonBuf.length + ' 字（略）</div>';
+    html += esc(contentBuf);
+    if (streaming) html += '<span class="ai-cursor"></span>';
+    out.innerHTML = html;
+    scrollBottom(out);
+    if (reasonBuf && reasonEl.style.display === 'none') {
+      reasonEl.style.display = '';
+      reasonEl.textContent = '（模型思考中…思考内容不参与用例，仅正文输出用于解析）';
+    }
+  }
+
+  var timer = null, t0 = 0, charCount = 0, running = false, metaSuffix = '';
+  function startMeta() {
+    t0 = Date.now(); charCount = 0; metaSuffix = '';
+    meta.classList.remove('ai-err');
+    (function tick() {
+      meta.textContent = '解析中 ' + ((Date.now() - t0) / 1000).toFixed(1) + 's · ' + charCount + ' 字' + metaSuffix;
+      timer = setTimeout(tick, 100);
+    })();
+  }
+  function stopMeta(suffix) {
+    clearTimeout(timer); timer = null;
+    meta.textContent = ((Date.now() - t0) / 1000).toFixed(1) + 's · ' + charCount + ' 字' + (suffix || '');
+  }
+
+  function streamParse(form, btn) {
+    if (running) return;
+    running = true;
+    if (btn) { btn.disabled = true; btn.dataset.origText = btn.textContent; btn.textContent = 'AI 解析中…'; }
+    showOverlay();   // 2026-11-04 ian：点击即显示全屏 loading（不必等首个 token）
+    card.style.display = '';
+    reasonEl.style.display = 'none'; reasonEl.textContent = '';
+    render('', '', true);
+    startMeta();
+    var contentBuf = '', reasonBuf = '', rafPending = false;
+
+    fetch(STREAM_URL, { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok || !res.body) {
+          return res.json().catch(function () { return { error: 'HTTP ' + res.status }; })
+            .then(function (j) { throw new Error(j.error || ('HTTP ' + res.status)); });
+        }
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder('utf-8');
+        var frame = '';
+        function pump() {
+          return reader.read().then(function (r) {
+            if (r.done) { finish(''); return; }
+            frame += decoder.decode(r.value, { stream: true });
+            var idx;
+            while ((idx = frame.indexOf('\n\n')) >= 0) {
+              handleFrame(frame.slice(0, idx));
+              frame = frame.slice(idx + 2);
+            }
+            return pump();
+          });
+        }
+        function handleFrame(raw) {
+          var evName = 'message', dataLines = [];
+          raw.split('\n').forEach(function (line) {
+            if (line.indexOf('event:') === 0) evName = line.slice(6).trim();
+            else if (line.indexOf('data:') === 0) dataLines.push(line.slice(5).trim());
+          });
+          var payload = null;
+          try { payload = JSON.parse(dataLines.join('\n')); } catch (e) { payload = dataLines.join('\n'); }
+          if (evName === 'delta' || evName === 'reasoning') {
+            var t = typeof payload === 'string' ? payload : (payload && payload.text) || '';
+            if (evName === 'delta') { contentBuf += t; charCount += t.length; }
+            else reasonBuf += t;
+            if (!rafPending) {
+              rafPending = true;
+              requestAnimationFrame(function () { rafPending = false; render(contentBuf, reasonBuf, true); });
+            }
+          } else if (evName === 'stats') {
+            var s = payload || {};
+            metaSuffix = s.total_tokens
+              ? ' · tokens ' + s.total_tokens
+              : ' · 网关未返回用量';
+          } else if (evName === 'done') {
+            finish(payload);
+          } else if (evName === 'error') {
+            finish('', typeof payload === 'string' ? payload : (payload && payload.error) || '解析失败');
+          }
+        }
+        function finish(donePayload, errMsg) {
+          render(contentBuf, reasonBuf, false);
+          hideOverlay();   // 完成/失败都收起 loading 遮罩
+          if (errMsg) {
+            meta.classList.add('ai-err');
+            stopMeta(' · 失败：' + errMsg);
+            out.innerHTML += '<div style="color:#f87171;margin-top:8px">✕ ' + esc(errMsg) + '</div>' +
+              '<div style="color:#94a3b8;margin-top:4px">可修改描述后重试（按钮已恢复）。</div>';
+            if (btn) { btn.disabled = false; btn.textContent = btn.dataset.origText || 'AI 解析'; }
+            running = false;
+            return;
+          }
+          if (donePayload && donePayload.html) {
+            root.innerHTML = donePayload.html;   // 整体替换为预览编辑态（服务端同款模板渲染）
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            stopMeta(' · 完成 ✓ ' + (donePayload.steps || '') + ' 步');
+          } else {
+            stopMeta('');
+          }
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset.origText || 'AI 解析'; }
+          running = false;
+        }
+        return pump();
+      })
+      .catch(function (err) {
+        render(contentBuf, reasonBuf, false);
+        hideOverlay();   // 连接中断也要收起遮罩，恢复可操作
+        meta.classList.add('ai-err');
+        stopMeta(' · 连接中断：' + err.message);
+        out.innerHTML += '<div style="color:#f87171;margin-top:8px">✕ ' + esc(err.message) + '</div>';
+        if (btn) { btn.disabled = false; btn.textContent = btn.dataset.origText || 'AI 解析'; }
+        running = false;
+      });
+  }
+
+  /* document 级事件委托：输入态「AI 解析」与预览态「← 重新解析」都走流式（替换 root 后无需重绑） */
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.getAttribute('action') !== '/scenarios/cases/ai-create/') return;
+    var btn = e.submitter;
+    /* 2026-11-04 ian 修复：submitter 无 name="action" 时回落取表单 hidden action（原来的 !btn 条件
+       导致「AI 解析」按钮存在时永远判 false → 从不走 SSE、原生提交空等 ~100s 才跳转）。 */
+    var actVal = (btn && btn.name === 'action' && btn.value)
+      || (form.querySelector('input[name=action]') || {}).value;
+    var isParse = actVal === 'parse';
+    if (!isParse) return;   // explore / create 等照常原生提交
+    e.preventDefault();
+    streamParse(form, btn);
+  });
+})();
+</script>
+{% endblock %}

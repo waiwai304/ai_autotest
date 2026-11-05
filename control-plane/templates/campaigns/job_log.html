@@ -1,0 +1,78 @@
+{% extends 'base.html' %}{% block title %}JOB-{{ obj.pk|stringformat:'06d' }} 执行日志{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <h4 class="mb-0">JOB-{{ obj.pk|stringformat:'06d' }} 执行日志
+    {% if obj.status == 'passed' %}<span class="ui-badge ui-badge-green">通过</span>
+    {% elif obj.status == 'failed' %}<span class="ui-badge ui-badge-red">失败</span>
+    {% else %}<span class="ui-badge ui-badge-slate">{{ obj.get_status_display }}</span>{% endif %}
+    {% if obj.device == 'wap' %}<span class="ui-badge ui-badge-green">WAP</span>{% else %}<span class="ui-badge ui-badge-blue">PC</span>{% endif %}
+  </h4>
+  <div>
+    <a class="ui-btn ui-btn-sm" href="/campaigns/{{ obj.campaign_id }}/jobs/{{ obj.pk }}/">← Job 详情</a>
+    <a class="ui-btn ui-btn-sm" href="/campaigns/{{ obj.campaign_id }}/">← Campaign</a>
+  </div>
+</div>
+<p class="text-muted small mt-2 mb-3">{{ obj.site_code }} · {{ obj.scenario_code }} · 尝试 {{ obj.attempt_count }} 次 · 日志共 {{ raw_log|length }} 字符（完整未截断）</p>
+
+{% if known_hits %}
+<div class="ui-card mb-3" style="border:2px solid #7c3aed">
+  <div class="ui-card-head" style="color:#6d28d9;font-weight:600">已知异常识别（知识库自动匹配 · 命中 {{ known_hits|length }} 类）</div>
+  <div class="ui-card-body py-2">
+    {% for k in known_hits %}
+    <div class="mb-2 {% if not forloop.last %}pb-2 border-bottom{% endif %}">
+      <span class="ui-badge text-white" style="background:{{ k.color }}">{{ k.label }}</span>
+      <span class="ui-badge ui-badge-slate">{{ k.category }}</span>
+      <code class="small text-muted">{{ k.code }}</code>
+      {% if k.sev == 'critical' %}<span class="ui-badge ui-badge-red">致命（整轮受影响）</span>{% else %}<span class="ui-badge ui-badge-amber">存疑/间歇性</span>{% endif %}
+      <div class="small mt-1"><b>错误解析：</b>{{ k.analysis }}</div>
+      <ul class="small mb-0 mt-1" style="padding-left:18px">
+        {% for a in k.actions %}<li>{{ a }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+    <p class="text-muted mb-0" style="font-size:12px">标识由 web-blackbox/scripts/known_errors.json 知识库对 Runner 日志自动匹配生成，与 HTML 测试报告的异常类型识别区同源。</p>
+  </div>
+</div>
+{% endif %}
+
+{% if lines404 %}
+<div class="ui-card mb-3" style="border:2px solid var(--red,#ef4444)"><div class="ui-card-head" style="color:#b91c1c">404 / Not Found 相关日志行</div><div class="ui-card-body py-2">
+  <pre class="ui-badge-dark text-light rounded p-3 mb-0" style="max-height:220px;overflow:auto;font-size:12.5px">{% for l in lines404 %}{{ l }}
+{% endfor %}</pre>
+</div></div>
+{% endif %}
+
+<div class="row mb-3">
+  <div class="col-lg-4">
+    <div class="ui-card"><div class="ui-card-head">涉及网址（{{ urls|length }} 个）</div><div class="ui-card-body py-2" style="max-height:260px;overflow:auto">
+      <ul class="small mb-0" style="padding-left:16px;word-break:break-all">
+        {% for u in urls %}<li><code>{{ u }}</code></li>{% empty %}<li class="text-slate-400">日志中无 URL（可能未进入页面访问阶段）</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+  <div class="col-lg-8">
+    <div class="ui-card"><div class="ui-card-head">执行步骤（{{ steps|length }} 步）</div><div class="ui-card-body py-2" style="max-height:260px;overflow:auto">
+      <table class="ui-table mb-0">
+        <tr><th>步骤</th><th>结果</th><th>耗时</th><th>时刻</th></tr>
+        {% for s in steps %}<tr>
+          <td><b>{{ s.id }}</b></td>
+          <td>{% if s.status == 'ok' %}<span class="ui-badge ui-badge-green">通过</span>{% elif s.status == 'fail' %}<span class="ui-badge ui-badge-red">失败</span>{% else %}<span class="ui-badge ui-badge-slate">进行中</span>{% endif %}</td>
+          <td>{{ s.ms }}ms</td><td>@{{ s.at }}s</td>
+        </tr>{% empty %}<tr><td colspan="4" class="text-slate-400 text-[11.5px]">无结构化步骤记录（老用例或未产生步骤标记；完整过程见下方日志）</td></tr>{% endfor %}
+      </table>
+    </div></div>
+  </div>
+</div>
+
+<div class="ui-card"><div class="ui-card-head">Runner 完整日志（含页面访问、接口触发；curl 全文见 HTML 报告）</div>
+<div class="ui-card-body p-2">
+  <pre class="ui-badge-dark text-light rounded p-3 mb-0" style="max-height:640px;overflow:auto;font-size:12.5px;line-height:1.55">{{ raw_log|default:'（暂无日志：任务可能尚未执行）' }}</pre>
+</div></div>
+<details class="ui-fold mt-2">
+  <summary>日志与标识说明</summary>
+  <div class="ui-fold-body">
+    <p class="mb-1.5">异常/阻断标识由 <code>known_errors.json</code> 知识库对 Runner 日志自动匹配生成，与 HTML 报告的异常识别区同源。</p>
+    <p class="mb-0">全链类用例的每一步 curl（完整请求头 + postData）在对应 HTML 报告的步骤卡中；本页为 Runner 原始输出全文。</p>
+  </div>
+</details>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}{% block title %}Skills{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+  <h4 class="mb-0">Skill Packs · 测试技能规范包</h4>
+  <a class="ui-btn ui-btn-success ui-btn-sm" href="/skills/create/">新建技能包</a>
+</div>
+<div class="ui-summary mb-3">
+  <span class="ui-badge ui-badge-slate">规范清单</span><span class="ui-badge ui-badge-green">页面保存 = 写源文件 + 升版</span>
+  <details class="ui-fold inline-flex"><summary>机制</summary>
+    <div class="ui-fold-body absolute z-10 left-0 top-7 w-[min(88vw,440px)] bg-white border shadow-lg">每个技能包 = 一类站点的测试规范清单（必须检查 / 判断边界）· 点击编码查看与编辑 · 源文件 <code>skill-packs/&lt;编码&gt;/SKILL.md</code>（页面保存直接写源文件并入库升版）。</div>
+  </details>
+</div>
+
+<div class="row g-3">
+  {% for it in objects %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="ui-card h-100">
+      <div class="ui-card-body py-2 px-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <a href="/skills/{{ it.o.code }}/" style="font-size:14px"><b>{{ it.o.code }}</b></a>
+            <div class="text-slate-400" style="font-size:12.5px">{{ it.o.name|default:'（无名称）' }}</div>
+          </div>
+          <span class="ui-badge ui-badge-slate">v{{ it.o.version }}</span>
+        </div>
+        <div class="my-1">
+          <span class="ui-badge ui-badge-slate border">{{ it.rules }} 条规范</span>
+          {% if it.has_file and it.in_sync %}<span class="ui-badge ui-badge-green">源文件同步</span>
+          {% elif it.has_file %}<span class="ui-badge ui-badge-amber">源文件已漂移</span>
+          {% else %}<span class="ui-badge ui-badge-red">源文件缺失</span>{% endif %}
+        </div>
+      </div>
+      <div class="bg-white d-flex justify-content-end gap-2 py-1 px-3">
+        <a class="ui-btn ui-btn-sm py-0" href="/skills/{{ it.o.code }}/">查看</a>
+        <a class="ui-btn ui-btn-sm py-0" href="/skills/{{ it.o.code }}/edit/">编辑</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="ui-alert ui-alert-warning">暂无技能包（make sync 导入或页面新建）</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

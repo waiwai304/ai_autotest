@@ -1,0 +1,57 @@
+{% extends 'base.html' %}{% block title %}动作配方库{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-1">
+  <h4 class="mb-0">动作配方库</h4>
+  <a class="ui-btn ui-btn-sm" href="/scenarios/cases/ai-create/">← AI 建用例</a>
+</div>
+<div class="ui-summary mb-3">
+  <span class="ui-badge ui-badge-green">核准即生效</span><span class="ui-badge ui-badge-blue">已生效 {{ approved_count }} 条</span>
+  <details class="ui-fold inline-flex"><summary>机制</summary>
+    <div class="ui-fold-body absolute z-10 left-0 top-7 w-[min(88vw,480px)] bg-white border shadow-lg">探索验证对「白名单外动作」做启发式点击的候选证据沉淀在此。<b>核准即生效</b>：系统把证据里的落地页固化成相对路径，原语动态并入注册表——AI 规划词汇表立即变宽，生成的 spec 按「登录后直达该页」真实执行，无需改任何代码。</div>
+  </details>
+</div>
+<div class="ui-card">
+  <div class="ui-card-body p-0">
+    <table class="ui-table" style="font-size:12.5px">
+      <thead><tr><th>#</th><th>状态</th><th>建议原语名</th><th>口语意图</th><th>证据</th><th style="width:300px">操作</th></tr></thead>
+      <tbody>
+      {% for r in recipes %}
+        <tr>
+          <td>{{ r.pk }}</td>
+          <td>{% if r.status == 'approved' %}<span class="ui-badge ui-badge-green">已核准</span>{% elif r.status == 'rejected' %}<span class="ui-badge ui-badge-slate">已弃用</span>{% else %}<span class="ui-badge ui-badge-amber">候选</span>{% endif %}</td>
+          <td class="font-monospace">{{ r.action_name }}</td>
+          <td style="max-width:240px">{{ r.intent }}</td>
+          <td style="max-width:260px;font-size:11px">
+            点击「{{ r.evidence.clicked_text|default:'-' }}」
+            {% if r.evidence.url_after %}<div class="text-slate-400">→ {{ r.evidence.url_after }}</div>{% endif %}
+            {% if r.evidence.toast %}<div class="text-slate-400">toast「{{ r.evidence.toast }}」</div>{% endif %}
+            {% if r.explore %}<a href="/scenarios/explore/{{ r.explore.pk }}/">来源探索 {{ r.explore.report_dir }}</a>{% endif %}
+          </td>
+          <td>
+            {% if r.status == 'approved' %}
+            <div class="text-success small mb-1">已生效 ✓ 直达 {{ r.evidence.path|default:'(未固化路径,不参与规划)' }}</div>
+            <form method="post" class="d-flex gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="rid" value="{{ r.pk }}">
+              <button class="ui-btn ui-btn-sm" name="do" value="reject">弃用</button>
+            </form>
+            {% elif r.status == 'rejected' %}<span class="text-slate-400">{{ r.updated_at|date:"m-d H:i" }}</span>
+            {% else %}
+            <form method="post" class="d-flex gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="rid" value="{{ r.pk }}">
+              <input class="ui-input font-monospace" name="action_name" placeholder="正式原语名如 change_nickname" value="{{ r.action_name }}">
+              <button class="ui-btn ui-btn-success ui-btn-sm" name="do" value="approve">核准</button>
+              <button class="ui-btn ui-btn-sm" name="do" value="reject">弃用</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">暂无配方——去 AI 建用例发起「探索验证」，白名单外动作的点击证据会沉淀到这里</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

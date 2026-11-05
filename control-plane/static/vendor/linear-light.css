@@ -1,0 +1,637 @@
+/* ============================================================
+   Linear Light · OneBuy 测试平台中心 主题覆盖层
+   叠加于 ui.css（Tailwind v4 预编译产物）之后：
+   · 令牌块：Linear Light 色板
+   · 色族重映射：blue/sky/cyan → Linear 紫（主色统一）
+   · 引擎块：覆盖侧栏深色字面量 hex 壳类 / vb-* 组件 / ui-* 组件
+   · 字体：全局中文黑体族（正文），JetBrains Mono 仅数据场景
+   · 附：⌘K 命令面板（Linear 灵魂交互）
+   ============================================================ */
+
+/* ---------- 1. 令牌 ---------- */
+:root {
+  --t-page: #fbfbfa;            /* Linear 暖白页面底 */
+  --t-surface: #ffffff;         /* 卡片 */
+  --t-side-bg: #fbfbfa;         /* 侧栏底 */
+  --t-side-border: #ececea;     /* 侧栏右边框 */
+  --t-text: #1a1a1a;            /* 主文字 */
+  --t-text-2: #6f6f6c;          /* 次要文字 */
+  --t-text-3: #999995;          /* 弱文字 */
+  --t-primary: #5e6ad2;         /* Linear 紫 */
+  --t-primary-hover: #6873e0;
+  --t-primary-deep: #5660bd;
+  --t-primary-soft: rgba(94, 106, 210, .09);
+  --t-primary-soft-2: rgba(94, 106, 210, .14);
+  --t-border: #e8e8e6;          /* 全局细边框 */
+  --t-border-strong: #d5d5d2;
+  --t-hover: #f3f3f1;           /* 列表 hover */
+  --t-side-dim: #5b5b66;        /* 侧栏可见灰（替代 slate-300/400） */
+
+  /* 圆角体系：Linear 8 / 10 */
+  --radius-md: .375rem;
+  --radius-lg: .5rem;           /* 8px */
+  --radius-xl: .5rem;
+  --radius-2xl: .625rem;        /* 10px */
+
+  /* 主色族重映射：blue → Linear 紫（链接/主按钮/选中态/PC 端徽章统一紫系） */
+  --color-blue-50: #f1f2f8;
+  --color-blue-100: #e4e6f5;
+  --color-blue-200: #cdd1ee;
+  --color-blue-300: #aab2e3;
+  --color-blue-400: #8089d6;
+  --color-blue-500: #5e6ad2;
+  --color-blue-600: #5e6ad2;
+  --color-blue-700: #5660bd;
+  --color-blue-800: #4851a8;
+  --color-blue-900: #3a418a;
+  --color-blue-950: #262b57;
+  /* sky / cyan → 紫灰系（去青蓝装饰感） */
+  --color-sky-50: #fafafd;
+  --color-sky-300: #a9b0e6;
+  --color-sky-400: #7d86cf;
+  --color-sky-500: #6b74c8;
+  --color-sky-600: #5e6ad2;
+  --color-sky-700: #5660bd;
+  --color-sky-900: #3a418a;
+  --color-sky-950: #262b57;
+  --color-cyan-50: #f7f7fb;
+  --color-cyan-200: #c9cdee;
+  --color-cyan-400: #8e96d8;
+  --color-cyan-500: #7d86cf;
+  /* slate-50 → 暖白（主区底/表头） */
+  --color-slate-50: #fbfbfa;
+  --color-slate-100: #f4f4f2;
+  --color-slate-200: #e8e8e6;
+  /* v6 壳变量 */
+  --vb-primary: #5e6ad2;
+  --vb-primary-hover: #6873e0;
+  --vb-accent: #7d86cf;
+  --vb-accent-cyan: #8e96d8;
+  --vb-sidebar-bg: #fbfbfa;
+  --vb-border: #e8e8e6;
+}
+
+/* ---------- 2. 全局基底 ---------- */
+html { color-scheme: light; }
+body {
+  background: var(--t-page) !important;
+  color: var(--t-text);
+  /* 黑体族统一（中文黑体优先） */
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC',
+               'Source Han Sans SC', 'SimHei', 'Heiti SC', sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+code, pre, .font-mono, .vb-mono, kbd {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+}
+::selection { background: rgba(94, 106, 210, .18); }
+::-webkit-scrollbar-thumb { background: #d5d5d2; }
+::-webkit-scrollbar-thumb:hover { background: #b8b8b4; }
+
+/* ---------- 3. 侧栏（深色 → Linear Light） ---------- */
+#vbSide {
+  background: var(--t-side-bg) !important;
+  border-right: 1px solid var(--t-side-border) !important;
+  box-shadow: none !important;
+}
+/* 品牌头：去深色渐变 */
+#vbSide .h-14, #vbSide .bg-gradient-to-r { background: var(--t-side-bg) !important; }
+#vbSide .bg-\[\#090e1a\] { background: var(--t-side-bg) !important; }
+#vbSide .from-\[\#090e1a\], #vbSide .to-\[\#0d1527\] { background-image: none !important; }
+/* OB Logo：蓝青渐变 → Linear 紫方块 */
+#vbSide .bg-gradient-to-br { background: var(--t-primary) !important; box-shadow: none !important; }
+/* 品牌文字 */
+#vbSide .text-white { color: var(--t-text) !important; }
+#vbSide .text-slate-300 { color: var(--t-side-dim) !important; }
+#vbSide .text-slate-400 { color: #8a8a90 !important; }
+#vbSide .text-slate-500 { color: var(--t-text-3) !important; }
+#vbSide .text-sky-400\/80 { color: var(--t-text-3) !important; }
+#vbSide .text-sky-400 { color: #8e96d8 !important; }
+#vbSide .text-sky-300 { color: #8e96d8 !important; }
+#vbSide .border-slate-800\/90 { border-color: var(--t-side-border) !important; }
+#vbSide .bg-slate-800\/80 { background: var(--t-border) !important; }
+/* 呼吸点/状态点：青绿 → 紫 */
+#vbSide .bg-sky-400 { background: var(--t-primary) !important; }
+#vbSide .bg-emerald-400 { background: var(--t-primary) !important; box-shadow: none !important; }
+#vbSide footer, #vbSide .bg-\[\#070b14\] { background: var(--t-side-bg) !important; }
+#vbSide .hover\:text-sky-300:hover { color: var(--t-primary) !important; }
+
+/* 导航项（Linear：灰字 + hover 浅灰底 + active 紫） */
+.vb-nav-item {
+  color: var(--t-side-dim);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-weight: 500;
+}
+.vb-nav-item:hover {
+  color: var(--t-text);
+  background: var(--t-hover);
+}
+.vb-nav-item .vb-ic { color: #8a8a90; }
+.vb-nav-item.vb-active {
+  color: var(--t-primary);
+  background: var(--t-primary-soft);
+  box-shadow: inset 2px 0 0 var(--t-primary);
+  border-color: transparent;
+}
+.vb-nav-item.vb-active .vb-ic { color: var(--t-primary); }
+.vb-sub .vb-nav-item { color: #8a8a90; border-radius: 5px; }
+.vb-sub .vb-nav-item:hover { color: var(--t-text); }
+.vb-sub .vb-nav-item.vb-active {
+  color: var(--t-primary);
+  background: var(--t-primary-soft);
+  box-shadow: inset 2px 0 0 var(--t-primary);
+  border-color: transparent;
+}
+.vb-sub .vb-nav-item.vb-active .vb-ic { color: var(--t-primary); }
+.vb-dot { background: #c9c9c5; }
+.vb-nav-item.vb-active .vb-dot,
+.vb-sub .vb-nav-item.vb-active .vb-dot { background: var(--t-primary); box-shadow: none; }
+/* 子树连线 */
+.tree-sub-container { border-left: 1.5px solid var(--t-border); }
+.tree-sub-item:before { background: var(--t-border); }
+/* 分组标题 */
+#vbSide .vb-cap { color: var(--t-text-3) !important; }
+/* 侧栏遮罩 */
+#vbMask { background: rgba(26, 26, 26, .28) !important; }
+
+/* ---------- 4. 顶栏 / 页签 ---------- */
+.ios-glass {
+  background: rgba(255, 255, 255, .92);
+  border-bottom: 1px solid var(--t-border);
+  box-shadow: none;
+}
+.vb-hbtn:hover { color: var(--t-primary); background: var(--t-hover); }
+.vb-avatar { background: var(--t-primary); }
+.vb-user > button { border-color: var(--t-border); }
+.vb-pop { border-color: var(--t-border); border-radius: 8px; box-shadow: 0 12px 32px -8px rgba(26,26,26,.14); }
+.vb-pop a:hover, .vb-pop button:hover { color: var(--t-primary); background: var(--t-hover); }
+.vb-tabs { background: #fff; border-bottom: 1px solid var(--t-border); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.vb-tab:hover { color: var(--t-text); background: var(--t-hover); }
+.vb-tab.active { color: var(--t-primary); background: var(--t-primary-soft); border-color: transparent; }
+.vb-bell:after { background: #f43f5e; }
+
+/* ---------- 5. ui-* 组件（Linear 质感） ---------- */
+/* 修复：Bootstrap 未分层 a{text-decoration/color} 压过 ui.css @layer 分层样式
+   → 全局取消链接下划线 + 按钮文字色按底色明暗守卫 */
+a, a:hover, a:focus, a:active { text-decoration: none !important; }
+.ui-btn { border-radius: 6px; font-weight: 600; color: #3d3d3f !important; }
+.ui-btn:hover { color: #1a1a1a !important; }
+.ui-btn-primary {
+  background: var(--t-primary) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  --tw-shadow: none !important;
+  border-radius: 6px;
+  color: #fff !important;            /* 深底 → 白字 */
+}
+.ui-btn-primary:hover { background: var(--t-primary-hover) !important; color: #fff !important; }
+.ui-btn-primary:active { background: var(--t-primary-deep) !important; color: #fff !important; }
+.ui-btn-success { color: #fff !important; }   /* emerald-600 深底 → 白字 */
+.ui-btn-danger { color: #d92d20 !important; } /* 浅底描边 → 深红字 */
+/* 通用守卫：深色底类 → 白字（bg-*-600/700/800/900） */
+[class*="bg-blue-6"], [class*="bg-blue-7"], [class*="bg-blue-8"], [class*="bg-blue-9"],
+[class*="bg-violet-6"], [class*="bg-violet-7"], [class*="bg-violet-8"],
+[class*="bg-emerald-6"], [class*="bg-emerald-7"], [class*="bg-emerald-8"],
+[class*="bg-rose-6"], [class*="bg-rose-7"], [class*="bg-rose-8"],
+[class*="bg-amber-5"], [class*="bg-amber-6"], [class*="bg-amber-7"],
+[class*="bg-slate-8"], [class*="bg-slate-9"] { color: #fff !important; }
+/* 通用守卫：浅色底徽章/按钮 → 深字（bg-*-50/100/200 底 + 原浅字类失效补救） */
+a[class*="bg-blue-50"], a[class*="bg-blue-100"] { color: var(--t-primary-deep) !important; }
+a[class*="bg-emerald-50"], a[class*="bg-emerald-100"] { color: #039855 !important; }
+a[class*="bg-rose-50"], a[class*="bg-rose-100"] { color: #d92d20 !important; }
+a[class*="bg-amber-50"], a[class*="bg-amber-100"] { color: #b54708 !important; }
+.ui-card {
+  border-radius: 8px;
+  border-color: var(--t-border) !important;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, .03) !important;
+}
+.ui-card-head { color: var(--t-text); border-bottom-color: #f0f0ee; }
+.ui-table thead th { color: var(--t-text-3); }
+.ui-table tbody td { color: #3d3d3f; border-bottom-color: #f0f0ee; }
+.ui-table tbody tr:hover { background: var(--t-hover) !important; }
+.ui-input, .ui-select, .ui-textarea { border-radius: 6px; border-color: var(--t-border); }
+.ui-input:focus, .ui-select:focus, .ui-textarea:focus {
+  border-color: var(--t-primary) !important;
+  box-shadow: 0 0 0 2px rgba(94, 106, 210, .15) !important;
+  outline: none !important;
+}
+.ui-input::placeholder, .ui-textarea::placeholder { color: #b0b0ac; }
+dialog {
+  border-radius: 10px !important;
+  box-shadow: 0 25px 50px -12px rgba(26,26,26,.24) !important;
+  /* 纯白背景（修复 ui.css 的 background:0 0 透明） */
+  background: #fff !important;
+  border: 1px solid var(--t-border) !important;
+  /* 居中：Tailwind preflight *{margin:0} 干掉原生 margin:auto → 贴左上角，此处恢复 */
+  inset: 0 !important;
+  margin: auto !important;
+  color: var(--t-text);
+}
+dialog::backdrop { background: rgba(26, 26, 26, .28); }
+/* 用例说明弹窗：占屏幕 1/2 并居中 */
+.case-dlg[open] {
+  width: 50vw !important;
+  height: 50vh !important;
+  max-width: 94vw;
+  max-height: 88vh;
+}
+.case-dlg .dlg-body { max-height: calc(50vh - 96px) !important; }
+.case-dlg .dlg-head { background: #fff !important; border-bottom: 1px solid var(--t-border) !important; }
+@media (max-width: 991.98px) {
+  .case-dlg[open] { width: 94vw !important; height: 80vh !important; }
+  .case-dlg .dlg-body { max-height: calc(80vh - 96px) !important; }
+}
+/* 弹窗拖动把手提示 */
+dialog .dlg-head, dialog .ui-card-head { cursor: move; }
+
+/* 链接 */
+main a.text-blue-600, main a.text-blue-700 { color: var(--t-primary); }
+main a.text-blue-600:hover, main a.text-blue-700:hover { color: var(--t-primary-hover); }
+/* 次要灰色链接（流程编号等）：对抗 Bootstrap 未分层 a 蓝色，hover 转紫 */
+a.text-slate-400, a.text-slate-400:link, a.text-slate-400:visited { color: #999995 !important; }
+a.text-slate-400:hover { color: var(--t-primary) !important; }
+
+/* ---------- 6. 登录页（auth 分支） ---------- */
+.bootstrap-auth, body > div.bg-gradient-to-br { background: var(--t-page) !important; }
+body > div.bg-gradient-to-br .from-blue-500\/10 { background: rgba(94,106,210,.07) !important; }
+body > div.bg-gradient-to-br .to-cyan-400\/10 { background: rgba(94,106,210,.05) !important; }
+
+/* ============================================================
+   7. ⌘K 命令面板（Linear 式全局跳转）
+   ============================================================ */
+.ln-cmdk-trigger {
+  display: inline-flex; align-items: center; gap: .5rem;
+  width: min(340px, 32vw); cursor: pointer;
+  background: var(--t-page); border: 1px solid var(--t-border); border-radius: 6px;
+  padding: .4rem .6rem; font-size: 12px; color: var(--t-text-3);
+  transition: all .15s;
+}
+.ln-cmdk-trigger:hover { border-color: var(--t-border-strong); background: #fff; }
+.ln-cmdk-trigger svg { width: 13px; height: 13px; flex-shrink: 0; }
+.ln-cmdk-trigger .ln-cmdk-kbd {
+  margin-left: auto; font-size: 10px; color: var(--t-text-3);
+  border: 1px solid var(--t-border); border-radius: 4px; padding: 1px 5px;
+  background: #fff; line-height: 1.5;
+}
+.ln-cmdk-mask {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(26, 26, 26, .28);
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 14vh;
+}
+.ln-cmdk-mask.open { display: flex; }
+.ln-cmdk {
+  width: min(560px, 92vw); background: #fff;
+  border: 1px solid var(--t-border); border-radius: 10px;
+  box-shadow: 0 24px 56px -12px rgba(26, 26, 26, .24);
+  overflow: hidden; animation: ln-pop .12s ease-out;
+}
+@keyframes ln-pop { from { transform: translateY(4px) scale(.99); opacity: 0; } to { transform: none; opacity: 1; } }
+.ln-cmdk-input-row { display: flex; align-items: center; gap: .6rem; padding: .8rem .9rem; border-bottom: 1px solid #f0f0ee; }
+.ln-cmdk-input-row svg { width: 15px; height: 15px; color: var(--t-text-3); flex-shrink: 0; }
+.ln-cmdk-input { flex: 1; border: none; outline: none; font-size: 13px; color: var(--t-text); background: transparent; }
+.ln-cmdk-input::placeholder { color: #b0b0ac; }
+.ln-cmdk-list { max-height: 320px; overflow-y: auto; padding: .4rem; }
+.ln-cmdk-cap { font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--t-text-3); padding: .45rem .6rem .25rem; }
+.ln-cmdk-item {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem .6rem; border-radius: 6px; font-size: 12.5px; color: #3d3d3f;
+  cursor: pointer; text-decoration: none;
+}
+.ln-cmdk-item svg { width: 14px; height: 14px; color: var(--t-text-3); flex-shrink: 0; }
+.ln-cmdk-item .ln-cmdk-path { margin-left: auto; font-size: 10px; color: var(--t-text-3); font-family: 'JetBrains Mono', monospace; }
+.ln-cmdk-item.sel, .ln-cmdk-item:hover { background: var(--t-primary-soft); color: var(--t-primary); }
+.ln-cmdk-item.sel svg, .ln-cmdk-item:hover svg { color: var(--t-primary); }
+.ln-cmdk-empty { padding: 1.4rem; text-align: center; font-size: 12px; color: var(--t-text-3); }
+.ln-cmdk-foot {
+  display: flex; align-items: center; gap: 1rem; padding: .45rem .9rem;
+  border-top: 1px solid #f0f0ee; font-size: 10.5px; color: var(--t-text-3); background: var(--t-page);
+}
+.ln-cmdk-foot kbd {
+  border: 1px solid var(--t-border); border-radius: 4px; padding: 0 4px;
+  font-size: 9.5px; background: #fff; color: var(--t-text-2);
+}
+@media (max-width: 767.98px) { .ln-cmdk-trigger { width: 40px; } .ln-cmdk-trigger .ln-cmdk-kbd, .ln-cmdk-trigger .ln-cmdk-label { display: none; } }
+
+/* ============================================================
+   8. 全局按钮尺寸统一（单一基准 = .ui-btn.ui-btn-sm「删除选中」）
+   基准盒模型：高 25px / 字号 11px / 左右内边距 8px / 圆角 6px / 字重 600
+   覆盖：Tailwind ui-* 全家族 + Bootstrap .btn 全家族（含 btn-group）
+   例外：① 登录页主 CTA（.btn-auth）保持 42px 行动点
+        ② 纯图标按钮统一为 25–26px 方形（不套用文本内边距）
+   改尺寸只需调下面四个令牌，全站一次生效。
+   ============================================================ */
+:root {
+  --btn-h: 30px;        /* 统一高度（基准 25px ×1.2） */
+  --btn-font: 13px;     /* 统一字号（11px ×1.2） */
+  --btn-pad-x: 10px;    /* 统一左右内边距（8px ×1.2） */
+  --btn-radius: 7px;    /* 统一圆角（6px ×1.2） */
+  --btn-icon: 31px;     /* 图标按钮方形边长（与文本按钮视觉等高） */
+}
+
+.ui-btn, .ui-btn-sm, .ui-btn-xs,
+.btn, .btn-sm, .btn-lg, .btn-xs,
+.btn-group > .btn, .btn-group-sm > .btn, .btn-group-lg > .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  height: var(--btn-h) !important;
+  min-height: var(--btn-h) !important;
+  max-height: var(--btn-h) !important;
+  padding: 0 var(--btn-pad-x) !important;
+  font-size: var(--btn-font) !important;
+  line-height: 1 !important;
+  font-weight: 600 !important;
+  border-radius: var(--btn-radius) !important;
+  vertical-align: middle !important;
+}
+.ui-btn svg, .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+/* 例外①：登录页主 CTA（全宽大号行动点，不参与工作区统一） */
+.ui-btn.btn-auth {
+  height: 50px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  font-size: 15px !important;
+}
+
+/* 例外②：纯图标按钮 → 正方形，保持同一高度基准 */
+.ui-btn.p-0, .ui-btn.px-0 {
+  width: var(--btn-h) !important;
+  min-width: var(--btn-h) !important;
+  padding: 0 !important;
+}
+.btn-close {
+  width: var(--btn-h) !important;
+  height: var(--btn-h) !important;
+  padding: 0 !important;
+  border-radius: var(--btn-radius) !important;
+  background-size: 12px !important;
+}
+
+/* 顶栏/头部图标控件与文本按钮对齐 */
+.vb-hbtn {
+  width: var(--btn-icon) !important;
+  height: var(--btn-icon) !important;
+  border-radius: var(--btn-radius) !important;
+}
+.vb-hbtn svg { width: 17px !important; height: 17px !important; }
+.vb-user > button {
+  height: var(--btn-icon) !important;
+  padding: 0 8px !important;
+  font-size: var(--btn-font) !important;
+  border-radius: var(--btn-radius) !important;
+}
+.ln-cmdk-trigger {
+  height: var(--btn-icon) !important;
+  padding: 0 10px !important;
+  font-size: 13px !important;
+}
+
+/* 侧栏折叠控（#vbFold/#vbFold2）：保持无边框文字样式，仅统一尺寸 */
+#vbFold, #vbFold2 {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: var(--btn-h) !important;
+  padding: 0 !important;
+  font-size: var(--btn-font) !important;
+  line-height: 1 !important;
+  border: 0 !important;
+  background: none !important;
+  border-radius: var(--btn-radius) !important;
+}
+
+/* ============================================================
+   9. 表格表头与单元格对齐 + 选择框对齐
+   根因：多处模板用「裸 <tr><th>」表头（未包 <thead>），浏览器解析为
+   tbody > tr > th，而 ui.css 只给 .ui-table thead th 写了内边距，
+   th 落到 preflight 的 padding:0 → 表头贴左、单元格缩进 12px。
+   ============================================================ */
+/* 9.1 让所有层级（thead / tbody 裸行）的表头与单元格同一盒模型 */
+.ui-table tbody > tr > th,
+.ui-table > tr > th {
+  padding: 10px 12px !important;
+  text-align: left !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: .025em;
+  color: var(--t-text-3) !important;
+  background: rgba(248, 250, 252, .8);
+  border-bottom: 1px solid var(--t-border) !important;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+/* 9.2 选择框统一尺寸 / 紫色强调 / 垂直居中（表格裸 checkbox 与 .ui-check 一致） */
+.ui-table input[type="checkbox"],
+input[type="checkbox"].ui-check {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  vertical-align: middle;
+  accent-color: var(--t-primary);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+/* 9.3 勾选框 + 文字对齐：与**首行文字**中线对齐（多行标签不会落到两行之间） */
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: .4rem;
+  margin-bottom: 0;
+}
+.form-check > .ui-check,
+.form-check > input[type="checkbox"] {
+  margin-top: 2px;      /* (行高18.2 - 方框14) / 2 */
+}
+.form-check .form-check-label { margin: 0; line-height: 1.4; }
+label.ui-check-row, .ui-check-row {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: .4rem;
+  cursor: pointer;
+}
+label.ui-check-row > input[type="checkbox"], .ui-check-row > input[type="checkbox"] { margin-top: 2px; }
+
+/* ============================================================
+   10. 表单控件尺寸统一（输入框/下拉/日期/文本域 = 与按钮同高 30px）
+   根因①：Bootstrap 未分层的 `input{font-size:inherit}` 压过 @layer 内的
+          .ui-input{font-size:12px}，字号回落到 16px、行高 24px → 控件高 42px，
+          与 30px 按钮并排时明显偏高。
+   根因②：.ui-input{width:100%} 让日期框撑满整列（实测 388px），单行信息过长。
+   ============================================================ */
+:root {
+  --ctl-h: 30px;        /* 与按钮同高 */
+  --ctl-font: 13px;
+  --ctl-pad-x: 10px;
+  --ctl-radius: 7px;
+}
+
+.ui-input:not(textarea),
+.ui-select {
+  height: var(--ctl-h) !important;
+  min-height: var(--ctl-h) !important;
+  padding: 0 var(--ctl-pad-x) !important;
+  font-size: var(--ctl-font) !important;
+  line-height: 1.2 !important;
+  border-radius: var(--ctl-radius) !important;
+}
+.ui-select { padding-right: 30px !important; }   /* 预留下拉箭头 */
+
+.ui-textarea {
+  min-height: 76px !important;
+  padding: 6px var(--ctl-pad-x) !important;
+  font-size: var(--ctl-font) !important;
+  line-height: 1.5 !important;
+  border-radius: var(--ctl-radius) !important;
+}
+
+/* 日期/时间控件：不再撑满整列，收敛为「一行可读全」的宽度 */
+.ui-input[type="date"],
+.ui-input[type="time"],
+.ui-input[type="datetime-local"],
+.ui-input[type="month"] {
+  width: auto !important;
+  min-width: 148px !important;
+  max-width: 172px !important;
+  padding-right: 6px !important;
+  flex: 0 0 auto;
+}
+/* 日期选择器小图标与文字垂直居中 */
+.ui-input[type="date"]::-webkit-calendar-picker-indicator,
+.ui-input[type="time"]::-webkit-calendar-picker-indicator,
+.ui-input[type="datetime-local"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .55; margin: 0; }
+.ui-input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+/* ============================================================
+   11. 输入组（Bootstrap .input-group）修复
+   根因：.ui-input 的 width:100% + 各自 7px 圆角 + 1px 边框被硬套进 flex 组，
+   组会换行（实测组高 61px：标签一行、输入框一行），且呈现「几个独立盒子」。
+   ============================================================ */
+.input-group {
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+}
+.input-group > .ui-input,
+.input-group > .ui-select {
+  flex: 1 1 auto !important;
+  width: 1% !important;          /* 关键：避免 100% 撑破导致换行 */
+  min-width: 0 !important;
+  height: var(--ctl-h) !important;
+  border-radius: 0 !important;
+}
+/* 组内日期框收紧，保证整组一行放得下 */
+.input-group > .ui-input[type="date"],
+.input-group > .ui-input[type="time"],
+.input-group > .ui-input[type="datetime-local"],
+.input-group > .ui-input[type="month"] {
+  flex: 0 0 124px !important;
+  width: 124px !important;
+  min-width: 0 !important;
+  max-width: 124px !important;
+  padding-right: 4px !important;
+}
+/* 组内前后缀：与输入框同高、同字号，视觉上连成一体 */
+.input-group > .input-group-text {
+  display: inline-flex;
+  align-items: center;
+  height: var(--ctl-h);
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--t-text-2);
+  background: #f7f7f5;
+  border: 1px solid var(--t-border);
+  border-radius: 0;
+}
+/* 仅首尾补圆角，中间相邻边框合并（避免双线） */
+.input-group > :first-child { border-top-left-radius: var(--ctl-radius) !important; border-bottom-left-radius: var(--ctl-radius) !important; }
+.input-group > :last-child  { border-top-right-radius: var(--ctl-radius) !important; border-bottom-right-radius: var(--ctl-radius) !important; }
+.input-group > * + * { margin-left: -1px; }
+.input-group > *:focus,
+.input-group > *:focus-within { position: relative; z-index: 2; }
+
+/* 侧栏底部折叠控：与 10px 页脚文字同排，保持紧凑（不再按 30px 按钮尺寸） */
+#vbFold, #vbFold2 {
+  height: 18px !important;
+  font-size: 10.5px !important;
+}
+
+/* ============================================================
+   12. 宽表格横向滚动（防止表格溢出卡片、撑出整页横向滚动条）
+   实测：/scenarios/ 表宽 1223px 而卡片仅 974px，右侧溢出 248px。
+   ============================================================ */
+.ui-card:has(> .ui-table),
+.ui-card-body:has(> .ui-table),
+.ui-card-body:has(> form > .ui-table),
+.ui-card-body:has(> div > .ui-table) {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+/* ============================================================
+   13. 徽章（badge）尺寸统一
+   原状：同一行内 16/17/18/19/20/21px 六种高度（padding 与行高不统一）。
+   ============================================================ */
+.ui-badge,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+  border-radius: 5px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+
+/* ===== 第 14 节：fold「机制/说明」弹层定位修复 =====
+   2026-11-04 ian：点「机制」弹层跑到页面左上角、被页头/卡片遮住显示不全。
+   根因：.ui-fold 没有定位上下文，内部 .ui-fold-body.absolute(left-0 top-7) 相对初始包含块定位。 */
+.ui-fold { position: relative; }
+.ui-fold[open] { z-index: 60; }
+.ui-fold > .ui-fold-body.absolute {
+  top: calc(100% + 6px) !important;
+  z-index: 70;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .14);
+  line-height: 1.65;
+}
+/* 页头 z-index 更高时不遮挡：弹层容器整体抬升 */
+.ui-summary:has(.ui-fold[open]) { position: relative; z-index: 60; }
+
+
+/* ===== 第 15 节：多行文本域统一可拖拽 + 编辑页默认更大 =====
+   2026-11-04 ian：技能包/Policy 的 SKILL.md 编辑框只有 30px 高且拖不动。
+   根因：第 10 节为「输入框与按钮同高」把 .ui-input 锁成了 height/min-height:30px !important，
+        而编辑页写的是 <textarea class="ui-input" rows="20">，固定高 + !important 会覆盖拖拽产生的内联高度。 */
+textarea { resize: vertical !important; }
+textarea.ui-input,
+textarea.ui-textarea {
+  min-height: 96px !important;
+  max-height: 85vh;
+  padding: 9px 11px !important;     /* 取消 0 内边距，首行不再贴边 */
+  line-height: 1.7 !important;
+  font-size: 12.5px !important;
+  overflow: auto !important;        /* 拖拽后内容不溢出 */
+}
+/* 初始高度由 rows 决定；不写 height，保证浏览器原生拖拽产生的内联 height 生效（见第 10 节 :not(textarea) 豁免） */
+/* 编辑大文本的页面（技能包 SKILL.md / Policy 规则 / 用例规范文本）：默认就给足高度 */
+textarea.ui-editor {
+  /* 默认高度适配视口：保证右下角拖拽手柄初始就在屏幕内（页头占 ~350px，62vh 会把手柄顶出视口） */
+  min-height: min(50vh, 520px) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto !important;
+  resize: vertical !important;
+}

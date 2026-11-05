@@ -1,0 +1,76 @@
+{% extends 'base.html' %}{% block title %}{{ obj.name }}{% endblock %}
+{% block content %}
+{% if messages %}{% for m in messages %}<div class="alert alert-success py-2">{{ m }}</div>{% endfor %}{% endif %}
+<h4>{{ obj.name }} <small class="text-slate-400">{{ obj.code }}</small></h4>
+
+{% with v=versions.first %}
+{% if v and v.definition.doc_created %}
+<div class="ui-card mb-3">
+  <div class="ui-card-head bg-white d-flex justify-content-between align-items-center">
+    <b>用例信息（页面创建·草稿）</b>
+    <a class="ui-btn ui-btn-sm" href="/scenarios/cases/">← 返回用例说明</a>
+  </div>
+  <div class="ui-card-body py-2 small">
+    <div class="mb-1"><b>说明：</b>{{ v.definition.description|default:'-' }}</div>
+    <div class="mb-1">
+      <b>测试端：</b>{% for e in v.supported_ends %}{% if e == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>{% else %}<span class="ui-badge ui-badge-green">WAP</span>{% endif %}{% endfor %}
+      <b class="ms-2">需要登录：</b>{% if v.definition.requires_auth %}<span class="ui-badge ui-badge-dark">是</span>{% else %}<span class="ui-badge ui-badge-slate">否</span>{% endif %}
+      <b class="ms-2">含写操作：</b>{% if v.definition.mutating %}<span class="ui-badge ui-badge-red">是</span>{% else %}<span class="ui-badge ui-badge-slate">否</span>{% endif %}
+    </div>
+    {% if v.definition.settings %}<div class="mb-1"><b>自定义设置：</b>{% for s in v.definition.settings %}<span class="ui-badge ui-badge-slate border"><code>{{ s.key }}</code>={{ s.default }}（{{ s.label }}）</span> {% endfor %}</div>{% endif %}
+    {% with steps=v.definition.doc_steps %}
+    {% if steps %}
+    <h6 class="text-muted mt-2 mb-1">步骤（{{ steps|length }} 步）</h6>
+    <table class="ui-table table-striped mb-0" style="font-size:13px">
+      <tr><th style="width:80px">步骤</th><th style="width:70px">端</th><th>内容 / 预期</th></tr>
+      {% for s in steps %}<tr><td><b>{{ s.id }}</b></td><td>{{ s.side|default:'-' }}</td><td>{{ s.name }}{% if s.expect %} <span class="text-slate-400">（预期：{{ s.expect }}）</span>{% endif %}</td></tr>{% endfor %}
+    </table>
+    {% endif %}
+    {% endwith %}
+  </div>
+</div>
+{% if is_ai %}
+<div class="ui-card mb-3">
+  <div class="ui-card-head bg-white"><b>AI 干跑与修正闭环</b> <span class="text-slate-400 text-[11.5px]">（真实执行 → 失败现场 → AI 修正 → 版本升级）</span></div>
+  <div class="ui-card-body py-2 small">
+    <form method="post" action="/scenarios/{{ obj.pk }}/dry-run/" class="d-flex gap-2 align-items-center mb-2">
+      {% csrf_token %}
+      <select class="ui-select" name="site_pk" style="max-width:220px">
+        {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}（{{ s.code }}）</option>{% endfor %}
+      </select>
+      <button class="ui-btn ui-btn-primary ui-btn-sm">▶ AI 干跑（PC·真实执行）</button>
+      <a class="ui-btn ui-btn-sm" href="/scenarios/cases/ai-create/">AI 重新规划</a>
+      <a class="ui-btn ui-btn-sm" href="/scenarios/recipes/">配方库</a>
+    </form>
+    {% if dry_runs %}
+    <div class="mb-1"><b>最近干跑：</b>
+      {% for c in dry_runs %}<a href="/campaigns/{{ c.pk }}/" class="me-2">#{{ c.pk }} <span class="badge {% if c.status == 'completed' %}bg-success{% elif c.status == 'running' or c.status == 'queued' %}bg-primary{% else %}bg-danger{% endif %}">{{ c.get_status_display }}</span></a>{% endfor %}
+    </div>
+    {% endif %}
+    {% if fail_evidence %}
+    <div class="border rounded p-2 ui-badge-slate mb-1">
+      <b class="text-danger">最近失败现场</b>（提取自 junit/runner 日志，AI 修正时作为证据）：
+      <ul class="ps-3 mb-0" style="font-size:12px">
+        {% for e in fail_evidence|slice:':6' %}<li><b>{{ e.id }}</b> {{ e.name }}{% if e.error %} — <span class="text-danger">{{ e.error|truncatechars:160 }}</span>{% endif %}</li>{% endfor %}
+      </ul>
+    </div>
+    <form method="post" action="/scenarios/{{ obj.pk }}/replan/" class="d-flex gap-2 align-items-center">
+      {% csrf_token %}
+      <select class="ui-select" name="site_pk" style="max-width:220px">
+        {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}（{{ s.code }}）</option>{% endfor %}
+      </select>
+      <button class="ui-btn btn-warning ui-btn-sm">AI 修正计划（升级新版本）</button>
+    </form>
+    {% endif %}
+    {% if explore_runs %}
+    <div class="mt-2"><b>探索记录：</b>{% for er in explore_runs %}<a href="/scenarios/explore/{{ er.pk }}/" class="me-2">{{ er.report_dir }} <span class="ui-badge ui-badge-slate">{{ er.get_status_display }}</span></a>{% endfor %}</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endwith %}
+
+<table class="ui-table bg-white"><tr><th>版本</th><th>状态</th><th>Runner Spec</th><th>SHA256</th><th>创建时间</th></tr>
+{% for v in versions %}<tr><td>v{{ v.version }}</td><td>{{ v.get_status_display }}</td><td><code>{{ v.runner_spec|default:'-' }}</code></td><td><small>{{ v.sha256|slice:':16' }}…</small></td><td>{{ v.created_at|date:'m-d H:i' }}</td></tr>{% endfor %}</table>
+{% endblock %}

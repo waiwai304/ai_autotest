@@ -1,0 +1,24 @@
+FROM mcr.microsoft.com/playwright:v1.55.0-noble
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+# runner 代码与产物全部走宿主机挂载（/workspace/runner = web-blackbox），不 COPY 进镜像
+
+WORKDIR /workspace
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY control-plane/requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt \
+    && python3 -m pip install --no-cache-dir --break-system-packages ddddocr
+
+COPY control-plane /workspace/control-plane
+COPY skill-packs /opt/skill-packs
+COPY policy-packs /opt/policy-packs
+
+# 内网单机 MVP：以 root 运行，直接读写宿主机挂载的 web-blackbox（规避 BT 面板 immutable 文件的 uid 问题）
+WORKDIR /workspace/control-plane
+
+CMD ["celery", "-A", "config", "worker", "-Q", "browser", "--loglevel=INFO", "--concurrency=1"]

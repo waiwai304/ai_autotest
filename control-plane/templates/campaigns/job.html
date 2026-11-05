@@ -1,0 +1,74 @@
+{% extends 'base.html' %}{% block title %}JOB-{{ obj.pk|stringformat:'06d' }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <h4 class="mb-0">JOB-{{ obj.pk|stringformat:'06d' }} · {{ obj.get_status_display }}
+    {% if obj.device == 'wap' %}<span class="ui-badge ui-badge-green">WAP 端</span>{% else %}<span class="ui-badge ui-badge-blue">PC 端</span>{% endif %}
+  </h4>
+  <div>
+    <button class="ui-btn ui-btn-sm" onclick="if(window.__tick){window.__tick();this.textContent='已刷新';var b=this;setTimeout(function(){b.textContent='刷新';},800);}else{location.reload();}" title="获取最新执行状态与进展">刷新</button>
+    {% if obj.status == 'running' or obj.status == 'cancel_requested' or obj.status == 'queued' %}
+    <form method="post" action="/campaigns/{{ obj.campaign_id }}/jobs/{{ obj.pk }}/cancel/" class="d-inline">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirm('确定终止该任务？测试进程将在数秒内停止，已完成步骤的截图与报告保留。');" title="终止运行中/排队中的测试进程（数秒内生效）">终止任务</button></form>
+    {% endif %}
+    {% if obj.status == 'failed' or obj.status == 'lost' %}<a class="ui-btn ui-btn-sm" href="/campaigns/{{ obj.campaign_id }}/jobs/{{ obj.pk }}/retry/" title="整条链路从头重跑（会重新真实下单并支付商品订单）">重新执行</a>
+    {% if obj.scenario_code == 'full-chain' and obj.device == 'pc' %}<form method="post" action="/campaigns/{{ obj.campaign_id }}/jobs/{{ obj.pk }}/resume/" class="d-inline" title="断点续跑：跳过已成功步骤，从上次失败的步骤继续（复用上轮订单与单据，不重复下单）">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-primary ui-btn-sm" onclick="return confirm('从上次失败的步骤继续执行？已成功步骤将跳过并复用其单据（不重复下单）。');">从失败步骤继续</button></form>{% endif %}{% endif %}
+    <a class="ui-btn ui-btn-sm" href="/campaigns/{{ obj.campaign_id }}/">← Campaign</a>
+  </div>
+</div>
+<p class="text-muted mt-2 mb-3">{{ obj.site_code }} · {{ obj.scenario_code }} · 尝试 {{ obj.attempt_count }} 次 · 心跳 <span id="hb">{{ obj.heartbeat_at|date:'H:i:s' }}</span></p>
+
+{% if error %}<div class="ui-alert ui-alert-danger"><b>失败原因：</b>{{ error }}{% if not report_url %}<hr class="my-2"><span class="text-[11.5px]">本轮未生成测试报告（用例未产出步骤数据）。完整日志见下方「执行日志」，或 <a href="/campaigns/{{ obj.campaign_id }}/jobs/{{ obj.pk }}/log/">打开日志页</a>。</span>{% endif %}</div>{% endif %}
+{% if report_url %}<p><a class="ui-btn ui-btn-success" href="{{ report_url }}">打开本轮测试报告（{{ obj.device|upper }} 端）</a></p>{% elif obj.status in 'failed,lost' %}<p><span class="ui-badge ui-badge-slate">未生成报告（无步骤数据）</span> <a class="ui-btn ui-btn-sm" href="/campaigns/{{ obj.campaign_id }}/jobs/{{ obj.pk }}/log/">查看日志定位原因</a></p>{% endif %}
+
+<div class="ui-card mb-3"><div class="ui-card-head">执行进度{% if obj.status == 'running' %} <span class="ui-badge ui-badge-amber">实时刷新中（5s）</span>{% endif %}</div>
+<div class="ui-card-body" id="progBox">
+  <div style="background:#f0f0f0;border-radius:6px;height:12px;overflow:hidden">
+    <div id="jBar" style="height:100%;width:0%;background:linear-gradient(90deg,#0960bd,#40a9ff);transition:width .4s"></div>
+  </div>
+  <div class="d-flex flex-wrap gap-4 mt-2 small">
+    <span>步骤：<b id="jDone">{{ obj.progress.done|default:0 }}</b>{% if obj.progress.total %} / {{ obj.progress.total }}{% endif %}</span>
+    <span>当前：<b id="jCur">{{ obj.progress.current|default:'-' }}</b></span>
+    <span>预估剩余：<b id="jEta">-</b></span>
+    <span>已用：<b id="jElapsed">-</b></span>
+  </div>
+  <div id="jSteps" class="d-flex flex-wrap gap-1 mt-2">
+    {% for s in obj.progress.steps %}
+      <span class="badge {% if s.status == 'ok' %}bg-success{% elif s.status == 'fail' %}bg-danger{% else %}bg-secondary{% endif %}" title="{{ s.ms }}ms @{{ s.at }}s">{{ s.id }}</span>
+    {% endfor %}
+  </div>
+</div></div>
+
+<div class="row"><div class="col-md-6"><h6>结果摘要</h6><pre class="bg-white border rounded p-3" style="max-height:300px;overflow:auto">{{ obj.result_summary|pprint }}</pre></div>
+<div class="col-md-6"><h6>RunManifest</h6><pre class="bg-white border rounded p-3" style="max-height:300px;overflow:auto">{{ obj.run_manifest|pprint }}</pre></div></div>
+<h6>Runner 日志（尾部）</h6><pre class="ui-badge-dark text-light rounded p-3" style="max-height:300px;overflow:auto">{{ obj.runner_log|slice:'-3000:' }}</pre>
+<h6 class="mt-3">产物文件（output/django/artifacts/JOB-{{ obj.pk|stringformat:'06d' }}）</h6>
+<ul>{% for f in art_files %}<li><a href="{{ art_prefix }}/{{ f }}">{{ f }}</a></li>{% empty %}<li>暂无</li>{% endfor %}</ul>
+
+{% if obj.status == 'running' or obj.status == 'queued' %}
+<script>
+(function () {
+  var fmt = function (s) { if (s == null) return '-'; s = Math.round(s); if (s < 60) return s + 's'; var m = Math.floor(s / 60); return m + 'm' + (s % 60) + 's'; };
+  function tick() {
+    fetch('/campaigns/{{ obj.campaign_id }}/progress/').then(function (r) { return r.json(); }).then(function (d) {
+      var j = null; d.jobs.forEach(function (x) { if (x.id === {{ obj.pk }}) j = x; });
+      if (!j) return;
+      var p = j.progress || {};
+      document.getElementById('jDone').textContent = (p.done || 0) + (p.total ? ' / ' + p.total : '');
+      document.getElementById('jCur').textContent = p.current || '-';
+      document.getElementById('jEta').textContent = j.status === 'running' ? (p.eta_sec != null ? fmt(p.eta_sec) : '估算中…') : '已完成';
+      document.getElementById('jElapsed').textContent = fmt(j.elapsed_sec);
+      document.getElementById('jBar').style.width = ((p.total && p.done != null) ? Math.min(100, Math.round(p.done / p.total * 100)) : 0) + '%';
+      var box = document.getElementById('jSteps');
+      if (box && p.steps && p.steps.length) {
+        box.innerHTML = p.steps.map(function (s) {
+          return '<span class="ui-badge ' + (s.status === 'ok' ? 'bg-success' : s.status 'fail' 'bg-danger' 'bg-secondary')" title="' + s.ms + 'ms @' + s.at + 's">' + s.id + '</span>';
+        }).join('');
+      }
+      if (j.status !== 'running' && j.status !== 'queued') location.reload();
+    }).catch(function () {});
+  }
+  tick(); setInterval(tick, 5000);
+  window.__tick = tick;
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}{% block title %}Policy 规则包{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+  <h4 class="mb-0">Policy 规则包 · 测试安全基线</h4>
+  <a class="ui-btn ui-btn-success ui-btn-sm" href="/policies/create/">新建规则包</a>
+</div>
+<div class="text-muted mb-3 small">
+  安全红线规则（禁止事项）· 发起测试时自动注入执行环境（<b>锁定的基线强制生效、不可取消</b>）并写入 Campaign 报告 · 源文件 <code>policy-packs/&lt;编码&gt;/policy.yaml</code>
+</div>
+
+<div class="row g-3">
+  {% for it in objects %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="ui-card h-100">
+      <div class="ui-card-body py-2 px-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <a href="/policies/{{ it.o.code }}/" style="font-size:14px"><b>{{ it.o.code }}</b></a>
+            <div class="text-slate-400" style="font-size:12.5px">{{ it.o.name|default:'（无名称）' }}</div>
+          </div>
+          <div>
+            <span class="ui-badge ui-badge-slate">v{{ it.o.version }}</span>
+            {% if it.o.locked %}<span class="ui-badge ui-badge-dark">锁定</span>{% endif %}
+          </div>
+        </div>
+        <div class="my-1">
+          <span class="ui-badge ui-badge-slate border">{{ it.rules|length }} 条规则</span>
+          {% if it.o.locked %}<span class="ui-badge ui-badge-red">强制注入测试</span>{% endif %}
+          {% if it.has_file and it.in_sync %}<span class="ui-badge ui-badge-green">源文件同步</span>
+          {% elif it.has_file %}<span class="ui-badge ui-badge-amber">源文件已漂移</span>
+          {% else %}<span class="ui-badge ui-badge-red">源文件缺失</span>{% endif %}
+        </div>
+      </div>
+      <div class="bg-white d-flex justify-content-end gap-2 py-1 px-3">
+        <a class="ui-btn ui-btn-sm py-0" href="/policies/{{ it.o.code }}/">查看规则</a>
+        {% if it.o.locked %}
+        <span class="ui-btn ui-btn-sm py-0 disabled" title="锁定保护——详情页可解锁后编辑">编辑</span>
+        {% else %}
+        <a class="ui-btn ui-btn-sm py-0" href="/policies/{{ it.o.code }}/edit/">编辑</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="ui-alert ui-alert-warning">暂无规则包（make sync 导入或页面新建）</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

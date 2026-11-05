@@ -1,0 +1,75 @@
+{% extends 'base.html' %}{% block title %}AI 接入设置{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-1">
+  <h4 class="mb-0">AI 接入设置</h4>
+  <a class="ui-btn ui-btn-sm" href="/scenarios/cases/ai-create/">← 返回 AI 建用例</a>
+</div>
+<div class="ui-summary mb-3"><span class="ui-badge ui-badge-blue">OpenAI 兼容协议</span><span class="ui-badge ui-badge-green">Key 留空 = 保留原值</span><span>接口地址 + Key + 模型名</span></div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white"><b>接入配置</b>{% if cfg.last_test_ok is True %}<span class="ui-badge ui-badge-green ms-2">上次测试连通</span>{% elif cfg.last_test_ok is False %}<span class="ui-badge ui-badge-red ms-2">上次测试失败</span>{% endif %}</div>
+      <div class="ui-card-body">
+        <form method="post" action="/scenarios/ai-config/">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="ui-label small mb-1">接口地址 base_url</label>
+            <input class="ui-input font-monospace" name="base_url" value="{{ cfg.base_url }}" placeholder="https://api.deepseek.com/v1" required>
+            <div class="ui-hint">OpenAI 兼容地址（含 /v1），如 https://api.deepseek.com/v1</div>
+          </div>
+          <div class="mb-3">
+            <label class="ui-label small mb-1">API Key {% if has_key %}<span class="ui-badge ui-badge-green">已配置</span>{% else %}<span class="ui-badge ui-badge-slate">未配置</span>{% endif %}</label>
+            <input class="ui-input font-monospace" name="api_key" type="password" value="" placeholder="{% if has_key %}留空 = 保留已配置的 Key{% else %}sk-...{% endif %}" autocomplete="new-password">
+          </div>
+          <div class="mb-3">
+            <label class="ui-label small mb-1">模型</label>
+            <input class="ui-input font-monospace" name="model" value="{{ cfg.model }}" list="model-list" required>
+            <datalist id="model-list">
+              <option value="deepseek-v4.1-flash-1017"></option>
+              <option value="deepseek-chat"></option>
+              <option value="deepseek-reasoner"></option>
+            </datalist>
+            <div class="ui-hint">模型名须与服务端完全一致（部分网关要求全小写，填错会报「模型不存在」）</div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <label class="ui-label small mb-1">温度 temperature</label>
+              <input class="ui-input" name="temperature" type="number" step="0.1" min="0" max="2" value="{{ cfg.temperature }}">
+            </div>
+            <div class="col-md-4">
+              <label class="ui-label small mb-1">超时（秒）</label>
+              <input class="ui-input" name="timeout_sec" type="number" min="10" max="600" value="{{ cfg.timeout_sec }}">
+            </div>
+            <div class="col-md-4">
+              <label class="ui-label small mb-1">最大 tokens</label>
+              <input class="ui-input" name="max_tokens" type="number" min="500" max="32000" value="{{ cfg.max_tokens }}">
+            </div>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="ui-check" type="checkbox" name="enabled" id="en" {% if cfg.enabled %}checked{% endif %}>
+            <label class="form-check-label small" for="en">启用 Agent（关闭后 AI 建用例入口不可用）</label>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="ui-btn ui-btn-primary" type="submit" name="action" value="save">保存配置</button>
+            <button class="ui-btn" type="submit" name="action" value="test">测试连接（用表单当前值）</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white"><b>说明</b></div>
+      <div class="ui-card-body small text-muted">
+        <ul class="ps-3 mb-0">
+          <li class="mb-2">规划调用只发送页面结构与口语描述，<b>不含测试账号密码</b>（安全基线 no-secret-to-ai）。</li>
+          <li class="mb-2">reasoning 类模型思考也计入 tokens，规划类建议最大 tokens ≥ 4000。</li>
+          <li class="mb-2">服务器直连目标网关（已强制绕过系统代理）。</li>
+          {% if cfg.last_test_msg %}<li>最近测试结果：{{ cfg.last_test_msg }}{% if cfg.last_test_at %}（{{ cfg.last_test_at|date:"m-d H:i" }}）{% endif %}</li>{% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

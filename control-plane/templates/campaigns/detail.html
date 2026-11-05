@@ -1,0 +1,121 @@
+{% extends 'base.html' %}{% block title %}Campaign #{{ obj.pk }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h4 class="mb-0">Campaign #{{ obj.pk }} · {{ obj.name }}</h4>
+  <div>
+    <button class="ui-btn ui-btn-sm" id="btnRefresh" title="获取最新执行状态与进展">刷新</button>
+    {% if obj.status == 'queued' or obj.status == 'created' or obj.status == 'running' %}
+    <form method="post" action="/campaigns/{{ obj.pk }}/cancel/" class="d-inline">{% csrf_token %}<button class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirm('取消未开跑的任务并终止运行中的任务？运行中任务数秒内停止，已完成步骤的截图与报告保留。');" title="取消未开跑任务 + 终止运行中任务">取消/终止</button></form>
+    {% endif %}
+    <a class="ui-btn ui-btn-sm" href="/campaigns/">← 执行中心</a>
+  </div>
+</div>
+
+<div class="ui-card mt-3"><div class="ui-card-body">
+  <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+    <span>状态：<b id="cpStatus">{{ obj.get_status_display }}</b></span>
+    <span>端：{% for e in obj.plan.ends %}{% if e == 'pc' %}PC {% else %}WAP {% endif %}{% endfor %}</span>
+    <span>任务 <b id="cpFin">{{ obj.finished_jobs }}</b>/<b id="cpTotal">{{ obj.total_jobs }}</b></span>
+    <span class="text-success">通过 <b id="cpPass">{{ obj.passed_jobs }}</b></span>
+    <span class="text-danger">失败 <b id="cpFail">{{ obj.failed_jobs }}</b></span>
+    {% if obj.report_built or first_report %}
+    <span class="ms-auto d-inline-flex gap-2">
+      {% if first_report %}<a class="ui-btn ui-btn-primary ui-btn-sm" href="{{ first_report }}" target="_blank">查看报告（HTML）</a>
+      {% elif obj.report_built %}<a class="ui-btn ui-btn-sm" href="#reports">报告列表</a>{% endif %}
+      {% if obj.report_built %}<a class="ui-btn ui-btn-sm" href="/reports/{{ obj.pk }}/campaign-report.md/" target="_blank">报告文档</a>{% endif %}
+    </span>
+    {% endif %}
+  </div>
+  <div style="background:#f0f0f0;border-radius:6px;height:10px;overflow:hidden">
+    <div id="cpBar" style="height:100%;width:0%;background:linear-gradient(90deg,#0960bd,#40a9ff);transition:width .4s"></div>
+  </div>
+  {% if obj.started_at %}
+  <div class="d-flex flex-wrap gap-4 mt-2 small">
+    <span>开始：<b>{{ obj.started_at|date:'m-d H:i:s' }}</b></span>
+    {% if obj.finished_at %}
+    <span>结束：<b>{{ obj.finished_at|date:'m-d H:i:s' }}</b></span>
+    <span>总耗时：<b>{{ obj.started_at|timesince:obj.finished_at }}</b></span>
+    {% endif %}
+  </div>
+  {% endif %}
+</div></div>
+
+{% if obj.report_built %}
+<div class="ui-card mt-3" id="reports"><div class="ui-card-head">报告路径</div><div class="ui-card-body py-2">
+  <table class="ui-table mb-0">
+    <tr><th style="width:150px">Campaign 汇总报告</th>
+        <td><a href="/reports/{{ obj.pk }}/campaign-report.md/">campaign-report.md</a>
+            <code class="small ms-2">output/django/reports/CAMPAIGN-{{ obj.pk|stringformat:'06d' }}/campaign-report.md</code></td></tr>
+    {% for j in jobs %}{% if j.result_summary.report %}
+    <tr><th>JOB-{{ j.pk|stringformat:'06d' }}</th>
+        <td><a href="{{ j.result_summary.report.url }}">打开 HTML 报告（{{ j.device|upper }} 端）</a>
+            <code class="small ms-2">{{ j.result_summary.report.html }}</code></td></tr>
+    {% endif %}{% endfor %}
+  </table>
+</div></div>
+{% endif %}
+
+<div class="ui-card mt-3"><div class="ui-card-head">任务列表（运行中实时显示步骤进度与预估剩余时间）</div><div class="ui-card-body p-0">
+<table class="ui-table">
+<tr><th>JOB</th><th>端</th><th>站点</th><th>流程</th><th>状态</th><th style="width:240px">执行进度</th><th>预估剩余</th><th>已用</th><th>报告</th><th>操作</th></tr>
+{% for j in jobs %}<tr id="jr{{ j.pk }}">
+  <td><a href="/campaigns/{{ obj.pk }}/jobs/{{ j.pk }}/"><b>JOB-{{ j.pk|stringformat:'06d' }}</b></a></td>
+  <td>{% if j.device == 'wap' %}<span class="ui-badge ui-badge-green">WAP</span>{% else %}<span class="ui-badge ui-badge-blue">PC</span>{% endif %}</td>
+  <td>{{ j.site_code }}</td><td>{{ j.scenario_code }}</td>
+  <td class="jr-status">{% if j.status == 'running' %}<span class="ui-badge ui-badge-amber">运行中</span>{% elif j.status == 'cancel_requested' %}<span class="ui-badge ui-badge-amber">取消中</span>{% elif j.status == 'passed' %}<span class="ui-badge ui-badge-green">通过</span>{% elif j.status == 'failed' %}<span class="ui-badge ui-badge-red">失败</span>{% elif j.status == 'cancelled' %}<span class="ui-badge ui-badge-slate">已取消</span>{% elif j.status == 'queued' %}<span class="ui-badge ui-badge-slate">排队中</span>{% else %}<span class="ui-badge ui-badge-slate">{{ j.get_status_display }}</span>{% endif %}{% if j.status == 'failed' or j.status == 'lost' %}{% if j.result_summary.error %}<div class="small text-danger mt-1" style="max-width:300px;white-space:normal" title="{{ j.result_summary.error }}">{{ j.result_summary.error|truncatechars:100 }}</div>{% else %}<div class="small text-muted mt-1">原因待查（看日志）</div>{% endif %}{% endif %}</td>
+  <td class="jr-prog">
+    <div style="background:#f0f0f0;border-radius:5px;height:7px;overflow:hidden"><div class="jr-bar" style="height:100%;width:0%;background:#0960bd;transition:width .4s"></div></div>
+    <div class="small text-muted jr-text">{{ j.progress.done|default:0 }}{% if j.progress.total %}/{{ j.progress.total }}{% endif %} 步{% if j.progress.current %} · 当前 {{ j.progress.current }}{% endif %}</div>
+  </td>
+  <td class="jr-eta small">-</td>
+  <td class="jr-elapsed small">{% if j.result_summary.elapsed_sec %}{{ j.result_summary.elapsed_sec }}s{% elif j.progress %}-{% else %}-{% endif %}</td>
+  <td class="jr-report">{% if j.result_summary.report %}<a href="{{ j.result_summary.report.url }}">打开报告</a> · <a href="/campaigns/{{ obj.pk }}/jobs/{{ j.pk }}/log/">日志</a>{% else %}<a href="/campaigns/{{ obj.pk }}/jobs/{{ j.pk }}/log/">日志</a>{% endif %}</td>
+  <td>{% if j.status == 'running' or j.status == 'cancel_requested' or j.status == 'queued' %}<form method="post" action="/campaigns/{{ obj.pk }}/jobs/{{ j.pk }}/cancel/" class="d-inline">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirm('确定终止该任务？测试进程将在数秒内停止，已完成步骤的截图与报告保留。');" title="终止运行中/排队中的测试进程（数秒内生效）">终止</button></form>{% endif %}{% if j.status == 'failed' or j.status == 'lost' %}<a class="ui-btn ui-btn-sm" href="/campaigns/{{ obj.pk }}/jobs/{{ j.pk }}/retry/" title="整条链路从头重跑（会重新真实下单并支付商品订单）">重新执行</a>{% if j.scenario_code == 'full-chain' and j.device == 'pc' %} <form method="post" action="/campaigns/{{ obj.pk }}/jobs/{{ j.pk }}/resume/" class="d-inline" title="断点续跑：跳过已成功步骤，从上次失败的步骤继续（复用上轮订单与单据，不重复下单）">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-sm" onclick="return confirm('从上次失败的步骤继续执行？已成功步骤将跳过并复用其单据（不重复下单）。');">从失败步骤继续</button></form>{% endif %}{% endif %}</td>
+</tr>{% endfor %}
+</table>
+</div></div>
+
+{% if obj.status == 'running' or obj.status == 'queued' %}
+<script>
+(function () {
+  var fmt = function (s) { if (s == null) return '-'; s = Math.round(s); if (s < 60) return s + 's'; var m = Math.floor(s / 60); return m + 'm' + (s % 60) + 's'; };
+  function tick() {
+    fetch('/campaigns/{{ obj.pk }}/progress/').then(function (r) { return r.json(); }).then(function (d) {
+      var c = d.campaign;
+      document.getElementById('cpFin').textContent = c.finished;
+      document.getElementById('cpPass').textContent = c.passed;
+      document.getElementById('cpFail').textContent = c.failed;
+      document.getElementById('cpBar').style.width = (c.total ? Math.round(c.finished / c.total * 100) : 0) + '%';
+      d.jobs.forEach(function (j) {
+        var tr = document.getElementById('jr' + j.id); if (!tr) return;
+        var stEl = tr.querySelector('.jr-status');
+        var badge = { running: '<span class="ui-badge ui-badge-amber">运行中</span>', cancel_requested: '<span class="ui-badge ui-badge-amber">取消中</span>', passed: '<span class="ui-badge ui-badge-green">通过</span>', failed: '<span class="ui-badge ui-badge-red">失败</span>', queued: '<span class="ui-badge ui-badge-slate">排队中</span>', lost: '<span class="ui-badge ui-badge-dark">失联</span>', cancelled: '<span class="ui-badge ui-badge-slate">已取消</span>' }[j.status] || j.status;
+        stEl.innerHTML = badge;
+        var p = j.progress || {};
+        var pct = (p.total && p.done != null) ? Math.min(100, Math.round(p.done / p.total * 100)) : 0;
+        var bar = tr.querySelector('.jr-bar'); if (bar) bar.style.width = pct + '%';
+        var txt = tr.querySelector('.jr-text');
+        if (txt) txt.textContent = (p.done || 0) + (p.total ? '/' + p.total : '') + ' 步' + (p.current ? ' · 当前 ' + p.current : '');
+        var eta = tr.querySelector('.jr-eta');
+        if (eta) eta.textContent = (j.status === 'running') ? (p.eta_sec != null ? fmt(p.eta_sec) : '估算中…') : '-';
+        var el = tr.querySelector('.jr-elapsed');
+        if (el && j.elapsed_sec != null) el.textContent = fmt(j.elapsed_sec);
+        var rep = tr.querySelector('.jr-report');
+        if (rep && j.report && !rep.textContent.includes('打开')) rep.innerHTML = '<a href="/reports/view/JOB-' + String(j.id).padStart(6, '0') + '-' + (j.device === 'wap' ? 'WAP' : 'PC') + '/">打开报告</a> · <a href="/campaigns/{{ obj.pk }}/jobs/' + j.id + '/log/">日志</a>';
+      });
+      if (c.status !== 'running' && c.status !== 'queued') location.reload();
+    }).catch(function () {});
+  }
+  tick(); setInterval(tick, 5000);
+  window.__tick = tick;
+})();
+</script>
+{% endif %}
+<script>
+/* 手动刷新：运行中触发即时轮询；已完成/失败则整页重载（拿到报告路径与最终时间） */
+document.getElementById('btnRefresh').onclick = function () {
+  if (window.__tick) { window.__tick(); var b = this; b.textContent = '已刷新'; setTimeout(function(){ b.textContent = '刷新'; }, 800); }
+  else { location.reload(); }
+};
+</script>
+{% endblock %}

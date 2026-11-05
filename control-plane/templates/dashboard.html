@@ -1,0 +1,176 @@
+{% extends 'base.html' %}{% block title %}仪表盘{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between gap-3 mb-5">
+  <div>
+    <h1 class="vb-page-title text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2" data-page-title="仪表盘">
+      仪表盘
+      <span class="ui-badge ui-badge-blue"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Live</span>
+    </h1>
+    <p class="text-[11.5px] text-slate-400 mt-0.5">测试资产 · 执行状态 · 最近活动总览</p>
+  </div>
+  <a class="ui-btn ui-btn-primary" href="/campaigns/new/">
+    <svg class="w-3.5 h-3.5"><use href="/static/vendor/lucide-sprite.svg#i-play"/></svg>
+    发起测试
+  </a>
+</div>
+
+{# 核心统计（可点击下钻） #}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+  <a href="/scenarios/cases/" class="ui-stat group hover:shadow-[0_10px_28px_-4px_rgba(15,23,42,0.10)] hover:-translate-y-0.5 transition-all">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="text-[11px] font-semibold text-slate-500">测试用例</div>
+        <div class="ui-stat-num mt-1.5 group-hover:text-blue-600 transition-colors">{{ scenario_count }}</div>
+        <div class="text-[10.5px] text-blue-500 font-semibold mt-1">流程 / 用例资产</div>
+      </div>
+      <div class="ui-icon-tile bg-blue-50 text-blue-600"><svg class="w-4.5 h-4.5"><use href="/static/vendor/lucide-sprite.svg#i-workflow"/></svg></div>
+    </div>
+  </a>
+  <a href="/sites/" class="ui-stat group hover:shadow-[0_10px_28px_-4px_rgba(15,23,42,0.10)] hover:-translate-y-0.5 transition-all">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="text-[11px] font-semibold text-slate-500">网站</div>
+        <div class="ui-stat-num mt-1.5 group-hover:text-sky-600 transition-colors">{{ site_count }}</div>
+        <div class="text-[10.5px] text-sky-500 font-semibold mt-1">站点环境档案</div>
+      </div>
+      <div class="ui-icon-tile bg-sky-50 text-sky-600"><svg class="w-4.5 h-4.5"><use href="/static/vendor/lucide-sprite.svg#i-globe"/></svg></div>
+    </div>
+  </a>
+  <a href="/campaigns/" class="ui-stat group hover:shadow-[0_10px_28px_-4px_rgba(15,23,42,0.10)] hover:-translate-y-0.5 transition-all">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="text-[11px] font-semibold text-slate-500">Campaign</div>
+        <div class="ui-stat-num mt-1.5 group-hover:text-violet-600 transition-colors">{{ campaign_count }}</div>
+        <div class="text-[10.5px] text-violet-500 font-semibold mt-1">计划 / 批次台账</div>
+      </div>
+      <div class="ui-icon-tile bg-violet-50 text-violet-600"><svg class="w-4.5 h-4.5"><use href="/static/vendor/lucide-sprite.svg#i-play-circle"/></svg></div>
+    </div>
+  </a>
+  <a href="/jobs/" class="ui-stat group hover:shadow-[0_10px_28px_-4px_rgba(15,23,42,0.10)] hover:-translate-y-0.5 transition-all">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="text-[11px] font-semibold text-slate-500">执行记录</div>
+        <div class="ui-stat-num mt-1.5 group-hover:text-emerald-600 transition-colors">{{ job_total }}</div>
+        <div class="text-[10.5px] text-emerald-500 font-semibold mt-1">Job 累计运行</div>
+      </div>
+      <div class="ui-icon-tile bg-emerald-50 text-emerald-600"><svg class="w-4.5 h-4.5"><use href="/static/vendor/lucide-sprite.svg#i-history"/></svg></div>
+    </div>
+  </a>
+</div>
+
+{# 执行状态分布 #}
+<div class="grid grid-cols-3 gap-4 mb-6">
+  <a href="/jobs/?status=passed" class="ui-card p-4 flex items-center gap-3 hover:-translate-y-0.5 transition-all">
+    <div class="ui-icon-tile bg-emerald-50 text-emerald-600"><svg class="w-4.5 h-4.5"><use href="/static/vendor/lucide-sprite.svg#i-check-circle"/></svg></div>
+    <div><div class="text-xl font-bold text-emerald-600 font-mono">{{ job_passed }}</div>
+      <div class="text-[11px] text-slate-500 font-semibold">通过</div></div>
+  </a>
+  <a href="/jobs/?status=failed" class="ui-card p-4 flex items-center gap-3 hover:-translate-y-0.5 transition-all">
+    <div class="ui-icon-tile bg-rose-50 text-rose-600"><svg class="w-4.5 h-4.5"><use href="/static/vendor/lucide-sprite.svg#i-x-circle"/></svg></div>
+    <div><div class="text-xl font-bold text-rose-600 font-mono">{{ job_failed }}</div>
+      <div class="text-[11px] text-slate-500 font-semibold">失败</div></div>
+  </a>
+  <a href="/jobs/?status=running" class="ui-card p-4 flex items-center gap-3 hover:-translate-y-0.5 transition-all">
+    <div class="ui-icon-tile bg-amber-50 text-amber-600"><svg class="w-4.5 h-4.5"><use href="/static/vendor/lucide-sprite.svg#i-loader"/></svg></div>
+    <div><div class="text-xl font-bold text-amber-600 font-mono">{{ job_running }}</div>
+      <div class="text-[11px] text-slate-500 font-semibold">运行中</div></div>
+  </a>
+</div>
+
+{# 最近测试用例 #}
+<div class="ui-card overflow-hidden mb-4">
+  <div class="ui-card-head">
+    <svg class="w-4 h-4 text-blue-500"><use href="/static/vendor/lucide-sprite.svg#i-workflow"/></svg>
+    最近测试用例
+    <span class="text-[10.5px] font-normal text-slate-400">（端：PC · WAP）</span>
+    <a href="/scenarios/cases/" class="ml-auto text-[11px] ui-link font-semibold">全部 ›</a>
+  </div>
+  <div class="overflow-x-auto">
+  <table class="ui-table">
+    <thead><tr><th>用例</th><th>名称</th><th>支持端</th><th>执行入口</th><th>自定义设置</th><th>最近运行</th><th class="text-right">操作</th></tr></thead>
+    <tbody>
+    {% for item in scenarios %}
+    <tr>
+      <td><span class="font-mono font-semibold text-slate-800">{{ item.sc.code }}</span></td>
+      <td>{{ item.sc.name }}</td>
+      <td>{% for e in item.ends %}{% if e == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>{% else %}<span class="ui-badge ui-badge-green">WAP</span>{% endif %} {% endfor %}</td>
+      <td><code class="text-[10.5px] text-slate-500 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">{{ item.spec }}</code></td>
+      <td class="text-slate-500">{{ item.settings_n }}</td>
+      <td>
+        {% for j in item.latest %}
+          {% if j.status == 'passed' %}<span class="ui-badge ui-badge-green">{{ j.device|upper }} 通过</span>
+          {% elif j.status == 'failed' %}<span class="ui-badge ui-badge-red">{{ j.device|upper }} 失败</span>
+          {% elif j.status == 'running' %}<span class="ui-badge ui-badge-amber">{{ j.device|upper }} 运行中</span>
+          {% else %}<span class="ui-badge ui-badge-slate">{{ j.device|upper }} {{ j.get_status_display }}</span>{% endif %}
+        {% empty %}<span class="text-slate-400">未运行</span>{% endfor %}
+      </td>
+      <td class="text-right">
+        <a class="ui-btn ui-btn-sm" href="/campaigns/new/?scenario={{ item.sc.code }}">
+          <svg class="w-3 h-3"><use href="/static/vendor/lucide-sprite.svg#i-play"/></svg>发起
+        </a>
+      </td>
+    </tr>
+    {% empty %}<tr><td colspan="7" class="text-center text-slate-400 py-6">暂无用例</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+  <div class="lg:col-span-7 ui-card overflow-hidden">
+    <div class="ui-card-head">
+      <svg class="w-4 h-4 text-sky-500"><use href="/static/vendor/lucide-sprite.svg#i-history"/></svg>
+      最近测试记录
+      <a href="/jobs/" class="ml-auto text-[11px] ui-link font-semibold">全部 ›</a>
+    </div>
+    <div class="overflow-x-auto">
+    <table class="ui-table">
+      <thead><tr><th>JOB</th><th>端</th><th>站点</th><th>用例</th><th>状态</th><th>耗时</th><th>报告</th></tr></thead>
+      <tbody>
+      {% for j in recent_jobs %}
+      <tr>
+        <td><a class="ui-link font-mono" href="/campaigns/{{ j.campaign_id }}/jobs/{{ j.pk }}/">{{ j.pk }}</a></td>
+        <td>{% if j.device == 'wap' %}<span class="ui-badge ui-badge-green">WAP</span>{% else %}<span class="ui-badge ui-badge-blue">PC</span>{% endif %}</td>
+        <td class="text-slate-500">{{ j.site_code }}</td>
+        <td class="text-slate-500">{{ j.scenario_code }}</td>
+        <td>
+          {% if j.status == 'passed' %}<span class="ui-badge ui-badge-green">{{ j.get_status_display }}</span>
+          {% elif j.status == 'failed' %}<span class="ui-badge ui-badge-red">{{ j.get_status_display }}</span>
+          {% elif j.status == 'running' %}<span class="ui-badge ui-badge-amber">{{ j.get_status_display }}</span>
+          {% elif j.status == 'lost' %}<span class="ui-badge ui-badge-dark">{{ j.get_status_display }}</span>
+          {% else %}<span class="ui-badge ui-badge-slate">{{ j.get_status_display }}</span>{% endif %}
+        </td>
+        <td class="text-slate-500 font-mono text-[11px]">{% if j.result_summary.elapsed_sec %}{{ j.result_summary.elapsed_sec }}s{% endif %}</td>
+        <td>{% if j.result_summary.report %}<a class="ui-link" href="{{ j.result_summary.report.url }}">打开</a>{% endif %}</td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="text-center text-slate-400 py-6">暂无记录</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="lg:col-span-5 ui-card overflow-hidden">
+    <div class="ui-card-head">
+      <svg class="w-4 h-4 text-violet-500"><use href="/static/vendor/lucide-sprite.svg#i-play-circle"/></svg>
+      最近 Campaign
+      <a href="/campaigns/" class="ml-auto text-[11px] ui-link font-semibold">全部 ›</a>
+    </div>
+    <div class="overflow-x-auto">
+    <table class="ui-table">
+      <thead><tr><th>ID</th><th>名称</th><th>状态</th><th>任务</th><th>通过/失败</th><th>创建</th></tr></thead>
+      <tbody>
+      {% for c in recent_campaigns %}
+      <tr>
+        <td><a class="ui-link font-mono" href="/campaigns/{{ c.pk }}">#{{ c.pk }}</a></td>
+        <td class="max-w-[140px] truncate">{{ c.name }}</td>
+        <td class="text-slate-500">{{ c.get_status_display }}</td>
+        <td class="font-mono text-[11px]">{{ c.finished_jobs }}/{{ c.total_jobs }}</td>
+        <td class="font-mono text-[11px]"><span class="text-emerald-600">{{ c.passed_jobs }}</span>/<span class="text-rose-600">{{ c.failed_jobs }}</span></td>
+        <td class="text-slate-400 text-[11px]">{{ c.created_at|date:'m-d H:i' }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="6" class="text-center text-slate-400 py-6">暂无</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

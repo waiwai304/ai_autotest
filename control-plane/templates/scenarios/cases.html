@@ -1,0 +1,270 @@
+{% extends 'base.html' %}{% block title %}流程库{% endblock %}
+{% block content %}
+<style>
+  .case-card { cursor: pointer; transition: box-shadow .15s, transform .15s; height: 100%; }
+  .case-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.14); transform: translateY(-2px); }
+  .case-card .desc-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.6em; font-size: 12.5px; }
+  dialog.case-dlg { border: 1px solid #dee2e6; border-radius: .5rem; width: min(860px, 94vw); max-height: 88vh; padding: 0; }
+  dialog.case-dlg::backdrop { background: rgba(0,0,0,.45); }
+  dialog.case-dlg .dlg-head { position: sticky; top: 0; background: #fff; border-bottom: 1px solid #dee2e6; padding: .6rem .9rem; z-index: 2; }
+  dialog.case-dlg .dlg-body { padding: .8rem .9rem; overflow-y: auto; max-height: calc(88vh - 110px); }
+  .src-text { white-space: pre-wrap; background: #f8f9fa; border: 1px dashed #ced4da; border-radius: .35rem; padding: .6rem .75rem; font-size: 12.5px; font-family: inherit; }
+  :target { scroll-margin-top: 70px; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+  <h4 class="mb-0">流程库</h4>
+  <div>
+    <a class="ui-btn ui-btn-success ui-btn-sm" href="/scenarios/cases/ai-create/">AI 新建测试用例</a>
+    <a class="ui-btn ui-btn-sm" href="/scenarios/cases/create/" title="按规范文本手动编写（老入口）">手动创建</a>
+    <a class="ui-btn ui-btn-primary ui-btn-sm" href="/campaigns/new/">发起测试</a>
+  </div>
+</div>
+<div class="text-muted mb-3 small">
+  每个测试用例一张卡片 · 点击卡片查看详情（创建时描述文案原文 / 自动生成规则与步骤明细）
+  {% if docs %} · 源码扫描用例：站点档案 {{ docs.site_id }} · 生成于 {{ docs.generated_at }}{% endif %}
+</div>
+
+<div class="row g-3 mb-2">
+  <div class="col-auto"><span class="ui-badge ui-badge-slate border fs-6">用例总数 {{ docs.total_count }}</span></div>
+  <div class="col-auto"><span class="ui-badge ui-badge-sky fs-6">源码扫描 {{ docs.cases|length }}</span></div>
+  <div class="col-auto"><span class="ui-badge ui-badge-amber fs-6">页面创建 {{ docs.doc_cases|length }}</span></div>
+</div>
+
+<!-- 筛选 / 排序工具条（2026-11-04 ian：端·登录·购物·后台·状态筛选 + 权重/创建/更新时间排序） -->
+<div class="ui-card mb-2">
+  <div class="ui-card-body py-2 px-3 d-flex flex-wrap align-items-center gap-2" style="font-size:12.5px">
+    <b class="text-slate-400">筛选</b>
+    <select id="fEnd" class="ui-select" style="width:auto">
+      <option value="">端：全部</option>
+      <option value="pc">含 PC</option>
+      <option value="wap">含 WAP</option>
+    </select>
+    <select id="fAuth" class="ui-select" style="width:auto">
+      <option value="">登录：全部</option>
+      <option value="1">需登录</option>
+      <option value="0">免登录</option>
+    </select>
+    <select id="fShop" class="ui-select" style="width:auto">
+      <option value="">购物：全部</option>
+      <option value="1">含购物链路</option>
+      <option value="0">不含购物</option>
+    </select>
+    <select id="fBack" class="ui-select" style="width:auto">
+      <option value="">后台：全部</option>
+      <option value="1">含后台环节</option>
+      <option value="0">不含后台</option>
+    </select>
+    <select id="fEnabled" class="ui-select" style="width:auto">
+      <option value="">状态：全部</option>
+      <option value="1">启用</option>
+      <option value="0">停用</option>
+    </select>
+    <b class="text-slate-400 ms-2">排序</b>
+    <select id="fSort" class="ui-select" style="width:auto">
+      <option value="w">权重优先（默认）</option>
+      <option value="cd">创建时间 新→旧</option>
+      <option value="ca">创建时间 旧→新</option>
+      <option value="ud">更新时间 新→旧</option>
+      <option value="ua">更新时间 旧→新</option>
+    </select>
+    <button class="ui-btn ui-btn-sm py-0" id="fReset" type="button" title="清空筛选条件并恢复默认排序">重置</button>
+    <span class="ms-auto text-slate-400" id="fCount"></span>
+  </div>
+</div>
+
+<div class="row g-3" id="caseGrid">
+  {% for it in docs.all_cards %}
+  {% include 'scenarios/_case_card.html' with c=it.c src=it.src %}
+  {% endfor %}
+</div>
+
+<!-- 懒加载状态条（2026-11-04 ian：首屏 3 行，滚动持续加载，可一键全部显示） -->
+<div id="caseLazyBar" class="d-flex align-items-center justify-content-center gap-3 py-4">
+  <span class="text-slate-400" style="font-size:12.5px" id="caseLazyStatus"></span>
+  <button class="ui-btn ui-btn-primary ui-btn-sm" id="caseShowAll" type="button">全部显示</button>
+</div>
+<div id="caseLazySentinel" style="height:1px"></div>
+
+<script>
+/* 流程库筛选 / 排序 / 懒加载引擎（2026-11-04 ian）
+   - 筛选：端(PC/WAP) · 登录 · 购物链路 · 后台环节 · 启停状态（多条件 AND）
+   - 排序：权重优先（默认，同权按创建时间倒序）/ 创建时间 / 更新时间（各含升降）
+   - 默认视图保留宫格懒加载；一旦有筛选或改排序，结果全部直接显示 */
+(function () {
+  var grid = document.getElementById('caseGrid');
+  if (!grid) return;
+  var cards = Array.prototype.filter.call(grid.children, function (el) {
+    return el.id && el.id.indexOf('case-') === 0;
+  });
+  var baseIdx = {};   // 服务端初始顺序（权重优先），作为排序并列时的稳定 tiebreak
+  cards.forEach(function (el, i) { baseIdx[el.id] = i; });
+  var F = { end: 'fEnd', auth: 'fAuth', shop: 'fShop', back: 'fBack', enabled: 'fEnabled', sort: 'fSort' };
+  Object.keys(F).forEach(function (k) { F[k] = document.getElementById(F[k]); });
+  var bar = document.getElementById('caseLazyBar');
+  var status = document.getElementById('caseLazyStatus');
+  var btn = document.getElementById('caseShowAll');
+  var sentinel = document.getElementById('caseLazySentinel');
+  var count = document.getElementById('fCount');
+  var visSet = cards, shown = 0, io = null;
+
+  function cols() { var w = window.innerWidth || 1280; return w >= 1200 ? 4 : w >= 992 ? 3 : w >= 576 ? 2 : 1; }
+  function num(el, k) { return parseInt(el.dataset[k] || '0', 10) || 0; }
+  function filters() {
+    return { end: F.end.value, auth: F.auth.value, shop: F.shop.value,
+             back: F.back.value, enabled: F.enabled.value, sort: F.sort.value };
+  }
+  function isDefault(f) {
+    return !f.end && !f.auth && !f.shop && !f.back && !f.enabled && f.sort === 'w';
+  }
+  function matches(el, f) {
+    if (f.end && (el.dataset.ends || '').indexOf(f.end) === -1) return false;
+    if (f.auth && el.dataset.auth !== f.auth) return false;
+    if (f.shop && el.dataset.shop !== f.shop) return false;
+    if (f.back && el.dataset.backend !== f.back) return false;
+    if (f.enabled && el.dataset.enabled !== f.enabled) return false;
+    return true;
+  }
+  function cmp(a, b) {
+    var m = F.sort.value, r = 0;
+    if (m === 'w') r = num(b, 'weight') - num(a, 'weight') || num(b, 'created') - num(a, 'created');
+    else if (m === 'cd') r = num(b, 'created') - num(a, 'created');
+    else if (m === 'ca') r = num(a, 'created') - num(b, 'created');
+    else if (m === 'ud') r = num(b, 'updated') - num(a, 'updated');
+    else r = num(a, 'updated') - num(b, 'updated');
+    return r || baseIdx[a.id] - baseIdx[b.id];
+  }
+  function updateBar() {
+    status.textContent = '已显示 ' + shown + ' / ' + visSet.length + ' 张';
+    bar.style.display = shown >= visSet.length ? 'none' : '';
+  }
+  function apply(keepLazy) {
+    var f = filters();
+    visSet = cards.filter(function (el) { return matches(el, f); });
+    visSet.sort(cmp);
+    visSet.forEach(function (el) { grid.appendChild(el); });   // 按当前排序重排 DOM
+    cards.forEach(function (el) { el.classList.add('d-none'); });
+    var lazy = keepLazy !== false && isDefault(f);
+    var n = lazy ? Math.min(cols() * 3, visSet.length) : visSet.length;
+    for (var i = 0; i < n; i++) visSet[i].classList.remove('d-none');
+    shown = n;
+    count.textContent = (visSet.length === cards.length)
+      ? '共 ' + cards.length + ' 张' : '筛出 ' + visSet.length + ' / ' + cards.length + ' 张';
+    updateBar();
+  }
+  function reveal(k) {
+    var target = Math.min(shown + k, visSet.length);
+    for (var i = shown; i < target; i++) visSet[i].classList.remove('d-none');
+    shown = target; updateBar();
+  }
+  ['end', 'auth', 'shop', 'back', 'enabled', 'sort'].forEach(function (k) {
+    F[k].addEventListener('change', function () { apply(false); });
+  });
+  document.getElementById('fReset').addEventListener('click', function () {
+    ['end', 'auth', 'shop', 'back', 'enabled'].forEach(function (k) { F[k].value = ''; });
+    F.sort.value = 'w';
+    apply();   // 恢复默认视图（懒加载）
+  });
+  if ('IntersectionObserver' in window) {
+    io = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting && shown < visSet.length) reveal(cols() * 3);
+    }, { rootMargin: '400px' });
+    io.observe(sentinel);
+  } else {
+    reveal(visSet.length);   // 不支持 IO 的浏览器兜底：直接全部显示
+  }
+  btn.addEventListener('click', function () { reveal(visSet.length); });
+  /* 锚点跳转目标卡未显示时先显示到该卡 */
+  window.__revealCard = function (code) {
+    var el = document.getElementById('case-' + code);
+    if (!el) return;
+    var pos = visSet.indexOf(el);
+    if (pos >= shown) reveal(pos + 1 - shown);
+  };
+  apply();
+})();
+</script>
+
+<script>
+/* 改名 / 权重弹窗（2026-11-04 ian：流程管理操作迁移到本页卡片） */
+function openRename(pk, code, name) {
+  document.getElementById('renameForm').action = '/scenarios/' + pk + '/rename/';
+  document.getElementById('renameCode').textContent = '流程编码：' + code;
+  document.getElementById('renameInput').value = name;
+  document.getElementById('renameDlg').showModal();
+  setTimeout(function () { document.getElementById('renameInput').focus(); }, 50);
+}
+function openWeight(pk, code, weight) {
+  document.getElementById('weightForm').action = '/scenarios/' + pk + '/weight/';
+  document.getElementById('weightCode').textContent = '流程编码：' + code + (weight ? '（当前权重 ' + weight + '）' : '（当前未设权重，按创建时间倒序）');
+  document.getElementById('weightInput').value = weight || '';
+  document.getElementById('weightDlg').showModal();
+  setTimeout(function () { document.getElementById('weightInput').focus(); }, 50);
+}
+</script>
+
+<!-- 改名弹窗（同流程库页同款） -->
+<dialog class="case-dlg" id="renameDlg" style="width:min(92vw,440px)">
+  <form method="post" action="" id="renameForm">
+    {% csrf_token %}
+    <div class="dlg-head d-flex justify-content-between align-items-center">
+      <b>修改流程名称</b>
+      <button type="button" class="btn-close" onclick="document.getElementById('renameDlg').close()"></button>
+    </div>
+    <div class="dlg-body">
+      <div class="mb-2 small text-muted" id="renameCode"></div>
+      <input class="ui-input" name="name" id="renameInput" maxlength="200" required placeholder="输入新的流程名称">
+      <div class="ui-hint">名称用于页面展示；流程编码（code）保持不变，不影响执行与历史记录。</div>
+    </div>
+    <div class="p-3 pt-0 d-flex gap-2 justify-content-end">
+      <button type="button" class="ui-btn ui-btn-sm" onclick="document.getElementById('renameDlg').close()">取消</button>
+      <button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">保存名称</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 权重设置弹窗（同款：0~9999，0/留空=按创建时间倒序） -->
+<dialog class="case-dlg" id="weightDlg" style="width:min(92vw,440px)">
+  <form method="post" action="" id="weightForm">
+    {% csrf_token %}
+    <div class="dlg-head d-flex justify-content-between align-items-center">
+      <b>设置流程权重</b>
+      <button type="button" class="btn-close" onclick="document.getElementById('weightDlg').close()"></button>
+    </div>
+    <div class="dlg-body">
+      <div class="mb-2 small text-muted" id="weightCode"></div>
+      <input class="ui-input" type="number" name="weight" id="weightInput" min="0" max="9999" step="1" placeholder="0 ~ 9999（留空或 0 = 不设权重）">
+      <div class="ui-hint">排序规则：设了权重（&gt;0）的流程排在前面，数值越大越靠前；未设权重的按创建时间从新到旧排列。</div>
+    </div>
+    <div class="p-3 pt-0 d-flex gap-2 justify-content-end">
+      <button type="button" class="ui-btn ui-btn-sm" onclick="document.getElementById('weightDlg').close()">取消</button>
+      <button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">保存权重</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  function openDlg(id) { var d = document.getElementById(id); if (d && d.showModal) d.showModal(); }
+  document.querySelectorAll('.case-card[data-dlg]').forEach(function (card) {
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('a, button, .no-open')) return;   // 卡内链接/按钮不触发弹窗
+      openDlg(card.dataset.dlg);
+    });
+  });
+  document.querySelectorAll('dialog.case-dlg').forEach(function (d) {
+    d.addEventListener('click', function (e) { if (e.target === d) d.close(); });   // 点 backdrop 关闭
+  });
+  if (location.hash.indexOf('#case-') === 0) {
+    var code = location.hash.slice(6);
+    if (window.__revealCard) window.__revealCard(code);   // 目标卡在懒加载未显示区时先显示
+    var card = document.getElementById('case-' + code);
+    if (card) card.scrollIntoView({ block: 'center' });
+    /* 2026-11-04 ian：stay=1 = 刚在卡片上完成改名/权重/停用等操作后返回——只定位卡片不弹窗 */
+    if (location.search.indexOf('stay=1') === -1) {
+      setTimeout(function () { openDlg('dlg-' + code); }, 150);   // 跳入：定位卡片并自动打开详情
+    }
+  }
+})();
+</script>
+{% endblock %}

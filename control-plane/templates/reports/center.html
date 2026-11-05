@@ -1,0 +1,172 @@
+{% extends 'base.html' %}{% block title %}报告中心{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">测试报告中心</h4>
+  <div class="d-flex gap-2">
+    <button type="submit" form="delForm" class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirmDel('delForm')">删除选中</button>
+    <button class="ui-btn ui-btn-sm" onclick="location.reload()">刷新</button>
+  </div>
+</div>
+<div class="ui-summary -mt-2 mb-3"><span class="ui-badge ui-badge-slate">HTML + MD 双件套</span><span class="ui-badge ui-badge-slate">时间倒序</span><span>截图 + curl 逐步复现，点击行内链接直接打开</span></div>
+
+<!-- 筛选栏：搜索 + 类别 + 站点 + 时间范围 -->
+<form method="get" class="ui-card mb-3"><div class="ui-card-body py-2">
+  <div class="row g-2 align-items-center">
+    <div class="col-md-4">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">搜索</span>
+        <input type="text" name="q" value="{{ q }}" class="ui-input" placeholder="RUN_ID / 关联用例名，如 JOB-000056、favorite">
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">类别</span>
+        <select name="scenario" class="ui-input">
+          <option value="">全部类别</option>
+          {% for v, label in scenario_opts %}<option value="{{ v }}" {% if v == f_scenario %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">站点</span>
+        <select name="site" class="ui-input">
+          <option value="">全部站点</option>
+          {% for v, label in site_opts %}<option value="{{ v }}" {% if v == f_site %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="row g-2 align-items-center mt-2">
+    <div class="col-md-9">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">生成时间</span>
+        <input type="date" name="date_from" value="{{ date_from }}" class="ui-input" title="开始日期">
+        <span class="input-group-text">至</span>
+        <input type="date" name="date_to" value="{{ date_to }}" class="ui-input" title="结束日期">
+      </div>
+    </div>
+    <div class="col-md-3 text-md-end">
+      <button type="submit" class="ui-btn ui-btn-sm">筛选</button>
+      <a href="/reports/" class="ui-btn ui-btn-sm">重置</a>
+    </div>
+  </div>
+</div></form>
+
+<form method="post" action="/reports/delete/" id="delForm">
+{% csrf_token %}
+<div class="ui-card"><div class="ui-card-body p-0">
+<table class="ui-table">
+<tr><th style="width:28px"><input type="checkbox" id="selAll" title="全选本页"></th><th>报告（RUN_ID）</th><th>端</th><th>关联 Job / 用例</th><th>状态</th><th>截图</th><th>生成时间</th><th class="text-nowrap">HTML 报告</th><th class="text-nowrap">测试结果报告.md</th></tr>
+{% for c in cards %}
+<tr>
+  <td><input type="checkbox" name="names" value="{{ c.name }}" class="row-sel"></td>
+  <td><b class="text-[11.5px]">{{ c.name }}</b></td>
+  <td>
+    {% if c.end == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>
+    {% elif c.end == 'wap' %}<span class="ui-badge ui-badge-green">WAP</span>
+    {% else %}<span class="ui-badge ui-badge-slate">历史</span>{% endif %}
+  </td>
+  <td class="text-[11.5px]">
+    {% if c.job %}<a href="/campaigns/{{ c.job.campaign_id }}/jobs/{{ c.job.pk }}/">{{ c.job.scenario_code }}</a>
+    {% elif c.name == '__latest' %}<span class="text-slate-400">最新轮次</span>
+    {% else %}<span class="text-slate-400">历史轮次</span>{% endif %}
+  </td>
+  <td>
+    {% if c.job %}
+      {% if c.job.status == 'passed' %}<span class="ui-badge ui-badge-green">通过</span>
+      {% elif c.job.status == 'failed' %}<span class="ui-badge ui-badge-red">失败</span>
+      {% else %}<span class="ui-badge ui-badge-slate">{{ c.job.get_status_display }}</span>{% endif %}
+    {% else %}<span class="text-slate-400 text-[11.5px]">-</span>{% endif %}
+  </td>
+  <td class="text-[11.5px]">{{ c.nshots }}</td>
+  <td class="text-[11.5px]">{{ c.mtime_str }}</td>
+  <td>
+    {% if c.has_index %}<a class="ui-btn ui-btn-sm" href="/reports/view/{{ c.name }}/" target="_blank">打开</a>
+    {% else %}<span class="text-slate-400 text-[11.5px]">无</span>{% endif %}
+  </td>
+  <td>
+    {% if c.has_md %}<a class="ui-btn ui-btn-sm" href="/reports/view/{{ c.name }}/%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C%E6%8A%A5%E5%91%8A.md" target="_blank">查看</a>
+    {% else %}<span class="text-slate-400 text-[11.5px]">无</span>{% endif %}
+  </td>
+</tr>
+{% empty %}<tr><td colspan="9" class="text-center text-muted py-4">{% if q or date_from or date_to or f_scenario or f_site %}没有符合筛选条件的报告{% else %}暂无测试报告 —— 发起一次测试后这里会自动出现双件套{% endif %}</td></tr>{% endfor %}
+</table>
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="d-flex justify-content-between align-items-center py-2 flex-wrap gap-2">
+  <span class="text-slate-400 text-[11.5px]">共 {{ n_total }} 份报告，筛选出 {{ n_filtered }} 份 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?{{ urlquery }}&amp;page=1">«</a></li>
+      <li class="page-item"><a class="page-link" href="?{{ urlquery }}&amp;page={{ page_obj.previous_page_number }}">上一页</a></li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">«</span></li>
+    {% endif %}
+    {% for n in page_obj.paginator.page_range %}
+      {% if n == page_obj.number %}
+        <li class="page-item active"><span class="page-link">{{ n }}</span></li>
+      {% elif n > page_obj.number|add:'-3' and n < page_obj.number|add:'3' %}
+        <li class="page-item"><a class="page-link" href="?{{ urlquery }}&amp;page={{ n }}">{{ n }}</a></li>
+      {% elif n == 1 or n == page_obj.paginator.num_pages %}
+        <li class="page-item"><a class="page-link" href="?{{ urlquery }}&amp;page={{ n }}">{{ n }}</a></li>
+      {% elif n == page_obj.number|add:'-3' or n == page_obj.number|add:'3' %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?{{ urlquery }}&amp;page={{ page_obj.next_page_number }}">下一页</a></li>
+      <li class="page-item"><a class="page-link" href="?{{ urlquery }}&amp;page={{ page_obj.paginator.num_pages }}">»</a></li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">»</span></li>
+    {% endif %}
+  </ul>
+</div>
+{% elif n_filtered != n_total %}
+<div class="py-2"><span class="text-slate-400 text-[11.5px]">共 {{ n_total }} 份报告，筛选出 {{ n_filtered }} 份</span></div>
+{% endif %}
+</div></div>
+</form>
+
+{% if items %}
+<form method="post" action="/reports/delete/" id="campDelForm">{% csrf_token %}
+<div class="ui-card mt-3">
+  <div class="ui-card-head d-flex justify-content-between align-items-center">
+    <span>Campaign 汇总报告</span>
+    <button type="submit" form="campDelForm" class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirmDel('campDelForm')">删除选中</button>
+  </div>
+  <div class="ui-card-body p-0">
+<table class="ui-table mb-0">
+<tr><th style="width:28px"></th><th>Campaign</th><th>名称</th><th>状态</th><th>任务</th><th>通过/失败</th><th>报告</th></tr>
+{% for c in items %}
+<tr><td><input type="checkbox" name="camp_dirs" value="CAMPAIGN-{{ c.campaign|stringformat:'06d' }}" class="row-sel"></td>
+<td><a href="/campaigns/{{ c.campaign }}/">#{{ c.campaign }}</a></td><td>{{ c.name }}</td>
+<td>{% if c.status == 'finished' %}<span class="ui-badge ui-badge-green">已完成</span>
+    {% elif c.status == 'running' %}<span class="ui-badge ui-badge-amber">运行中</span>
+    {% elif c.status == 'queued' %}<span class="ui-badge ui-badge-sky">排队中</span>
+    {% elif c.status == 'cancelled' %}<span class="ui-badge ui-badge-slate">已取消</span>
+    {% else %}<span class="ui-badge ui-badge-slate">{{ c.status }}</span>{% endif %}</td>
+<td>{{ c.finished }}/{{ c.total }}</td><td>{{ c.passed }}/{{ c.failed }}</td>
+<td><a href="/reports/{{ c.campaign }}/campaign-report.md/" target="_blank">campaign-report.md</a></td></tr>
+{% endfor %}
+</table>
+</div></div>
+</form>
+{% endif %}
+
+<script>
+function confirmDel(formId){
+  var f = document.getElementById(formId);
+  var n = f.querySelectorAll('input[type=checkbox]:checked').length;
+  if(!n){ alert('请先勾选要删除的记录'); return false; }
+  return confirm('确定删除选中的 ' + n + ' 项？删除后不可恢复。');
+}
+(function(){
+  var selAll = document.getElementById('selAll');
+  if(selAll){
+    selAll.addEventListener('change', function(){
+      document.querySelectorAll('#delForm .row-sel').forEach(function(cb){ cb.checked = selAll.checked; });
+    });
+  }
+})();
+</script>
+{% endblock %}

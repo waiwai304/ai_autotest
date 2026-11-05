@@ -1,0 +1,38 @@
+{% extends 'base.html' %}{% block title %}{% if create %}新建规则包{% else %}编辑 {{ obj.code }}{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+  <h4 class="mb-0">{% if create %}新建 Policy 规则包{% else %}编辑规则包 · {{ obj.name|default:obj.code }} <small class="text-slate-400">{{ obj.code }} v{{ obj.version }} → v{{ obj.version|add:1 }}</small>{% endif %}</h4>
+  <a class="ui-btn ui-btn-sm" href="/policies/">← 返回列表</a>
+</div>
+<div class="text-muted mb-3 small">
+  格式：YAML——头部 <code>id / name / version / locked</code> + <code>rules</code> 列表（每条 <code>id + severity(critical|high|medium|low) + text</code>）
+  {% if not create %} · 保存 = 写源文件 <code>policy-packs/{{ obj.code }}/policy.yaml</code> + 平台入库升版（version 自动 +1，id 不可改）{% endif %}
+</div>
+
+{% if errors %}
+<div class="alert alert-danger py-2">
+  <b>保存失败，请修正：</b>
+  <ul class="mb-0 ps-3">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="ui-card">
+  <div class="ui-card-head bg-white py-2">{% if create %}<b>规则包定义</b>{% else %}<b>policy.yaml 全文编辑</b>{% endif %}</div>
+  <div class="ui-card-body">
+    <form method="post" action="{% if create %}/policies/create/{% else %}/policies/{{ obj.code }}/edit/{% endif %}">
+      {% csrf_token %}
+      {% if create %}
+      <div class="mb-2" style="max-width:420px">
+        <label class="ui-label small mb-1">编码（唯一，小写字母/数字/连字符，创建后不可改）</label>
+        <input class="ui-input" name="code" value="{{ code|default:'' }}" placeholder="如 staging-rules" required>
+      </div>
+      {% endif %}
+      <textarea class="ui-input ui-editor font-monospace" name="content" id="content" rows="24" style="font-size:13px">{{ content }}</textarea>
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <span class="text-slate-400 text-[11.5px]">{% if create %}创建后自动写 <code>policy-packs/&lt;编码&gt;/policy.yaml</code> 并入库 v1{% else %}保存后 version 自动 +1；<b>新发起的测试将按新版本注入规则</b>（已发起的 Campaign 不受影响）{% endif %}</span>
+        <button type="submit" class="ui-btn ui-btn-primary">{% if create %}创建规则包{% else %}保存修改{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

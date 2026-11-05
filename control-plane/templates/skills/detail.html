@@ -1,0 +1,47 @@
+{% extends 'base.html' %}{% block title %}{{ obj.code }}{% endblock %}
+{% block content %}
+{% if messages %}{% for m in messages %}<div class="alert alert-success py-2">{{ m }}</div>{% endfor %}{% endif %}
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+  <h4 class="mb-0">{{ obj.name|default:obj.code }} <small class="text-slate-400">{{ obj.code }}</small></h4>
+  <div>
+    <a class="ui-btn ui-btn-sm" href="/skills/{{ obj.code }}/edit/">编辑修改</a>
+    <a class="ui-btn ui-btn-sm" href="/skills/">← 返回列表</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white py-2"><b>规范内容</b> <span class="text-slate-400 text-[11.5px]">（{{ rules }} 条规范 · 正文渲染自 SKILL.md）</span></div>
+      <div class="ui-card-body py-2">{{ body_html }}</div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="ui-card mb-3">
+      <div class="ui-card-head bg-white py-2"><b>技能包信息</b></div>
+      <div class="ui-card-body py-2" style="font-size:13px">
+        <table class="ui-table mb-0">
+          <tr><td class="text-slate-400" style="width:110px">编码</td><td><code>{{ obj.code }}</code></td></tr>
+          <tr><td class="text-slate-400">名称</td><td>{{ obj.name|default:'-' }}</td></tr>
+          <tr><td class="text-slate-400">平台版本</td><td>v{{ obj.version }}（每次保存 +1）</td></tr>
+          <tr><td class="text-slate-400">最近发布</td><td>{{ obj.published_at|date:'Y-m-d H:i'|default:'未发布' }}</td></tr>
+          <tr><td class="text-slate-400">内容指纹</td><td><small><code>{{ obj.sha256|slice:':16' }}…</code></small></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="ui-card">
+      <div class="ui-card-head bg-white py-2"><b>源文件状态</b></div>
+      <div class="ui-card-body py-2" style="font-size:13px">
+        <div class="mb-1">路径：<code style="font-size:12px">skill-packs/{{ obj.code }}/SKILL.md</code></div>
+        {% if has_file %}
+          {% if in_sync %}<span class="ui-badge ui-badge-green">与平台一致（hash 相同）</span>
+          {% else %}<span class="ui-badge ui-badge-amber">源文件与平台版本不一致（源 v{{ src_version }}，重新 make sync 或页面编辑保存可对齐）</span>{% endif %}
+        {% else %}
+          <span class="ui-badge ui-badge-red">源文件缺失（仅平台存档，无法页面编辑）</span>
+        {% endif %}
+        <div class="text-muted mt-2" style="font-size:12px">页面「编辑修改」保存 = 写源文件 + 平台入库；<code>make sync</code> 以 hash 去重，不会覆盖页面修改。</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

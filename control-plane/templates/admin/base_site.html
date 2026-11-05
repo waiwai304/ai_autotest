@@ -1,0 +1,108 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ title }} | OneBuy 测试平台数据管理{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+/* ===== Django Admin → vben-admin / antd v5 主题层（OneBuy 平台统一视觉）===== */
+:root{
+  --primary:#5e6ad2; --primary-fg:#fff; --secondary:#417690; --accent:#7d86cf;
+  --body-fg:rgba(0,0,0,.88); --body-quiet-color:rgba(0,0,0,.45); --body-medium-color:rgba(0,0,0,.65);
+  --link-fg:#5e6ad2; --link-hover-color:#6873e0;
+  --darkened-bg:#f1f2f8; --selected-bg:#f1f2f8; --selected-row-bg:#f1f2f8;
+  --default-button-bg:#5e6ad2; --default-button-hover-bg:#6873e0; --button-fg:#5e6ad2; --button-hover-fg:#6873e0;
+  --close-button-bg:#fff; --close-button-hover-bg:#f3f3f1;
+  --delete-button-bg:#d92d20; --delete-button-hover-bg:#f04438;
+  --border-radius:8px; --border-color:#e8e8e6;
+  font-family:'PingFang SC','Microsoft YaHei','Noto Sans SC','SimHei',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+#header{background:#fff!important;color:#1a1a1a!important;padding:10px 20px;border-bottom:1px solid var(--border-color)!important;box-shadow:none!important}
+#branding h1,#branding h1 a:link,#branding h1 a:visited{color:#1a1a1a!important;font-weight:600;font-size:17px}
+#branding h1 .vb-admin-badge{font-size:11px;background:#f1f2f8;border:1px solid #cdd1ee;color:#5660bd;border-radius:4px;padding:2px 8px;margin-left:8px;vertical-align:2px}
+#header a:link,#header a:visited{color:#5e6ad2!important}
+#header a:hover{color:#6873e0!important}
+#user-tools{font-size:13px;color:#6f6f6c!important}
+.vb-back-plat{display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff!important;border-radius:6px;padding:5px 14px;font-size:13px;margin-right:14px;text-decoration:none!important}
+/* 特异性修正：#header a:link 会压过 .vb-back-plat 白字 → 提升到 id+class 级 */
+#header a.vb-back-plat, #header a.vb-back-plat:link, #header a.vb-back-plat:visited{color:#fff!important}
+#header a.vb-back-plat:hover{background:#6873e0!important;color:#fff!important}
+#user-tools{font-size:13px}
+div.breadcrumbs{background:#fff;border-bottom:1px solid var(--border-color);padding:10px 20px;font-size:13px}
+div.breadcrumbs a{color:var(--primary)}
+#content{padding:16px 20px}
+#content h1,#content h2,#content h3{color:rgba(0,0,0,.88);font-weight:600}
+.module{border:1px solid var(--border-color);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.03);overflow:hidden;margin-bottom:14px}
+.module caption,.module h2,.submit-row legend,fieldset.module h2{background:#fafafa;color:rgba(0,0,0,.75);font-weight:600;font-size:13.5px;border-bottom:1px solid var(--border-color)}
+.module table td,.module table th{border-color:var(--border-color)!important;padding:10px 12px}
+.module tbody tr:hover td,.module tbody tr:hover th{background:#fafafa}
+table thead th{background:#fafafa!important;font-weight:600;font-size:13px}
+a:link,a:visited{color:var(--primary)}
+.button,input[type=submit],input[type=button],.submit-row input,.object-tools a{
+  background:var(--primary)!important;color:#fff!important;border:1px solid var(--primary)!important;
+  border-radius:6px!important;font-size:13px;padding:6px 14px;box-shadow:none;vertical-align:middle}
+.button:hover,input[type=submit]:hover,input[type=button]:hover,.submit-row input:hover,.object-tools a:hover{background:#3b93e0!important;border-color:#3b93e0!important}
+.button.default,input[type=submit].default{background:var(--primary)!important}
+.submit-row{background:#fafafa;border-top:1px solid var(--border-color);border-radius:0 0 8px 8px}
+#changelist{border-radius:8px}
+#changelist .results{border:1px solid var(--border-color);border-radius:8px;overflow:hidden}
+#changelist table tbody tr:hover{background:#fafafa}
+#changelist-filter{border:1px solid var(--border-color);border-radius:8px;background:#fff}
+#changelist-filter h2{background:#fafafa;border-bottom:1px solid var(--border-color);font-size:13px;font-weight:600}
+#changelist-filter a{color:var(--primary)}
+.selector,.selector select{border-radius:6px;border-color:#d9d9d9}
+input[type=text],input[type=password],input[type=email],input[type=url],input[type=number],textarea,select,.vTextField{
+  border:1px solid #d9d9d9!important;border-radius:6px!important;padding:6px 10px;font-size:13.5px;box-shadow:none!important}
+input:focus,textarea:focus,select:focus{border-color:var(--primary)!important;outline:2px solid rgba(9,96,189,.1)}
+.errors input,input.errors{border-color:var(--delete-button-bg)!important}
+#nav-sidebar{background:#fff;border-right:1px solid var(--border-color)}
+#nav-sidebar .module th,#nav-sidebar .module a{font-size:13px}
+#nav-sidebar .current-model a{background:#e6f4ff!important;color:var(--primary)!important}
+.object-tools a{background:#fff!important;color:var(--primary)!important;border:1px solid var(--primary)!important}
+.paginator{font-size:13px}
+.paginator a,.paginator .this-page{border-radius:4px;padding:4px 10px}
+.paginator .this-page{background:var(--primary);color:#fff}
+#footer{background:#fff;border-top:1px solid var(--border-color);color:rgba(0,0,0,.45);font-size:12px}
+/* ===== iframe 嵌入适配（平台后台管理页） ===== */
+html{color-scheme:light}
+/* Django 5.x 暗色主题守卫：iframe 内始终浅色，与外层 Linear Light 统一 */
+html[data-theme="auto"], html[data-theme="dark"]{
+  --primary:#5e6ad2;--secondary:#417690;--accent:#7d86cf;
+  --body-fg:#1a1a1a;--body-bg:#fff;--body-quiet-color:#6f6f6c;--body-medium-color:#3d3d3f;
+  --link-fg:#5e6ad2;--link-hover-color:#6873e0;
+  --hairline-color:#e8e8e6;--border-color:#e8e8e6;
+  --darkened-bg:#fafafa;--selected-bg:#f1f2f8;--selected-row-bg:#f1f2f8;
+  --button-bg:#fff;--button-fg:#5e6ad2;--default-button-bg:#5e6ad2;--default-button-hover-bg:#6873e0;
+  --close-button-bg:#fff;--close-button-fg:#6f6f6c;--close-button-hover-bg:#f3f3f1;
+  --delete-button-bg:#d92d20;--delete-button-hover-bg:#f04438;
+  --object-tools-bg:#5e6ad2;--object-tools-hover-bg:#6873e0;
+}
+/* 侧栏：iframe 内一屏内滚动，不再叠 white 遮罩 */
+#nav-sidebar{background:#fbfbfa!important;border-right:1px solid var(--border-color)!important}
+#nav-sidebar .current-model{background:#f1f2f8!important}
+#nav-sidebar .current-model a{color:#5e6ad2!important}
+.main>.content{padding-top:0}
+/* 顶栏右侧工具按钮（主题切换/注销等 form button）：白底紫字，防止紫底紫图标不可见 */
+#header button, #user-tools button, #header .theme-toggle{
+  background:#fff!important;color:#5e6ad2!important;border:1px solid #e8e8e6!important;
+  border-radius:6px!important;padding:4px 10px!important;font-size:12.5px!important;
+  box-shadow:none!important;cursor:pointer;
+}
+#header button:hover, #user-tools button:hover{background:#f3f3f1!important;color:#5660bd!important}
+/* 分组标题强制可读（浅灰底 + 深字） */
+.module caption, .module h2, fieldset.module h2, #content h2{
+  color:#1a1a1a!important;background:#fafafa!important;font-weight:600!important;
+}
+#content .module caption a, #content .module caption a:link, #content .module caption a:visited,
+#content .module h2 a, .module caption .section{
+  color:#1a1a1a!important;font-weight:600!important;
+}
+</style>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="/admin/">OneBuy 数据管理</a><span class="vb-admin-badge">Django Admin</span></h1>
+{% endblock %}
+
+{% block nav-global %}
+<a class="vb-back-plat" href="/dashboard/" target="_top" title="返回测试平台">← 返回测试平台</a>
+{% endblock %}

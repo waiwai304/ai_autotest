@@ -1,0 +1,185 @@
+{% extends 'base.html' %}{% block title %}测试用例{% endblock %}
+{% load campaigns_extras %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <h4 class="mb-0">测试用例
+    <span class="ui-badge ui-badge-blue">关键词 {{ counts.keyword }}</span>
+    <span class="ui-badge ui-badge-blue">图片 {{ counts.image }}</span>
+    <span class="ui-badge ui-badge-blue">链接 {{ counts.link }}</span>
+  </h4>
+  <a class="ui-btn ui-btn-sm" href="/campaigns/new/">→ 去发起测试（勾选/随机使用）</a>
+</div>
+<details class="ui-fold mt-2 mb-3 inline-block max-w-full">
+  <summary>素材池机制说明</summary>
+  <div class="ui-fold-body">OneBuy 测试平台在执行测试时，用例会从这三个素材池中获取搜索词 / 搜索图片 / 商品链接：发起测试时可<b>勾选指定条目</b>，未勾选则按类型<b>随机抽取</b>（每类最多 3 条注入用例环境变量 LIB_KEYWORDS / LIB_IMAGES / LIB_LINKS）。池为空时用例回退站点档案默认配置，不影响现有流程。点击卡片可查看与修改；卡片池底部「+ 添加」可批量录入（每行一条）。</div>
+</details>
+
+{% if messages %}
+  {% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }} alert-sm py-2">{{ m.message }}</div>{% endfor %}
+{% endif %}
+
+{# ===== 卡片池（2026-11-05 ian：表格改为方块卡片池，点击卡片查看/修改，池外底部添加） ===== #}
+<style>
+  .lib-pool{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start}
+  .lib-chip{position:relative;width:172px;min-height:86px;padding:10px 10px 26px;border:1px solid var(--slate-200,#e2e8f0);
+    border-radius:10px;background:#fff;cursor:pointer;transition:box-shadow .15s,transform .15s;overflow:hidden;text-align:left}
+  .lib-chip:hover{box-shadow:0 8px 22px -6px rgba(15,23,42,.18);transform:translateY(-1px)}
+  .lib-chip.is-off{background:#f8fafc;opacity:.62}
+  .lib-chip .v{font-size:12px;line-height:1.45;word-break:break-all;max-height:56px;overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+  .lib-chip .meta{position:absolute;left:10px;right:10px;bottom:7px;font-size:10.5px;color:#94a3b8;display:flex;gap:6px;align-items:center}
+  .lib-chip .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .lib-chip .dot.on{background:#22c55e}.lib-chip .dot.off{background:#94a3b8}
+  .lib-chip .thumb{width:100%;height:44px;object-fit:cover;border-radius:6px;margin-bottom:6px;background:#f1f5f9}
+  .lib-add{width:172px;min-height:86px;border:1.5px dashed #cbd5e1;border-radius:10px;background:transparent;
+    color:#64748b;font-size:12.5px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:4px}
+  .lib-add:hover{border-color:#2563eb;color:#2563eb;background:#f0f6ff}
+  .lib-add .plus{font-size:20px;line-height:1}
+  .lib-pool-wrap{max-height:400px;overflow:auto;padding:2px}
+</style>
+
+<div class="row g-3">
+  {% for k, label in kind_labels.items %}
+  <div class="col-12 col-xl-4">
+    <div class="ui-card h-100">
+      <div class="ui-card-head d-flex justify-content-between align-items-center">
+        <span>{{ label }}（启用 {{ counts_enabled|get_item:k }}/{{ counts|get_item:k }}）</span>
+      </div>
+      <div class="ui-card-body py-2">
+        <div class="lib-pool-wrap">
+          <div class="lib-pool" data-kind="{{ k }}">
+            {% for it in groups|get_item:k %}
+            <button type="button" class="lib-chip {% if not it.enabled %}is-off{% endif %}" data-edit="{{ it.pk }}"
+              data-kind="{{ k }}" data-value="{{ it.value }}" data-note="{{ it.note }}"
+              data-site="{{ it.site_id|default:'' }}" data-enabled="{{ it.enabled|yesno:'1,0' }}"
+              title="点击查看 / 修改：{{ it.value|truncatechars:60 }}">
+              {% if k == 'image' %}<img class="thumb" src="{{ it.value }}" alt="" loading="lazy"
+                onerror="this.style.display='none'">{% endif %}
+              <span class="v">{{ it.value|truncatechars:96 }}</span>
+              <span class="meta"><span class="dot {% if it.enabled %}on{% else %}off{% endif %}"></span>
+                <span>{{ it.site.name|default:'通用' }} · #{{ it.pk }}</span></span>
+            </button>
+            {% endfor %}
+            {# 池外添加入口：虚线方块，打开添加弹窗 #}
+            <button type="button" class="lib-add" data-add="{{ k }}"
+              title="批量添加（每行一条）"><span class="plus">＋</span>添加{% if k == 'keyword' %}关键词{% elif k == 'image' %}搜索图片{% else %}搜索链接{% endif %}</button>
+          </div>
+          {% if not groups|get_item:k %}
+          <div class="text-muted small py-2">暂无条目——点击「＋ 添加」批量录入（每行一条）</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- 查看/修改 + 添加 弹层（原生 dialog：项目无 bootstrap JS bundle） -->
+<style>
+  .lib-dlg{border:none;background:transparent;padding:0;width:min(92vw,560px)}
+  .lib-dlg::backdrop{background:rgba(15,23,42,.45)}
+  /* 2026-11-05 ian：无 bootstrap CSS 时 modal-content 无内边距，弹窗内容紧贴边缘——补全套间距 */
+  #editModal .modal-content{background:#fff;border-radius:12px;border:none;box-shadow:0 24px 60px -12px rgba(15,23,42,.35);overflow:hidden}
+  #editModal .modal-header{display:flex;justify-content:space-between;align-items:center;
+    padding:14px 18px;border-bottom:1px solid #eef2f7}
+  #editModal .modal-header .modal-title{font-size:14px;font-weight:600;margin:0}
+  #editModal .modal-body{padding:16px 18px}
+  #editModal .modal-footer{display:flex;padding:12px 18px;border-top:1px solid #eef2f7;background:#fafbfc}
+  #editModal .btn-close{width:26px;height:26px;border:none;background:transparent;cursor:pointer;
+    border-radius:6px;position:relative;flex:none}
+  #editModal .btn-close:hover{background:#f1f5f9}
+  #editModal .btn-close::before,#editModal .btn-close::after{content:'';position:absolute;left:6px;right:6px;top:50%;
+    height:1.6px;background:#64748b;border-radius:2px}
+  #editModal .btn-close::before{transform:translateY(-50%) rotate(45deg)}
+  #editModal .btn-close::after{transform:translateY(-50%) rotate(-45deg)}
+  #editModal .ui-label{margin-bottom:4px;display:block}
+  #editModal .modal-footer .d-flex{gap:8px}
+</style>
+<dialog class="lib-dlg" id="editModal">
+    <form class="modal-content" method="post" id="editForm">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="">
+      <div class="modal-header"><h6 class="modal-title" id="dlgTitle">编辑条目</h6>
+        <button type="button" class="btn-close" onclick="this.closest('dialog').close()"></button></div>
+      <div class="modal-body">
+        <div id="dlgPreview" class="mb-2"></div>
+        <label class="ui-label small">内容{% if k != 'keyword' %}{% endif %}<span class="text-slate-400" id="dlgMultilineHint" style="font-weight:400"></span></label>
+        <textarea name="value" class="ui-input mb-2" rows="3" required></textarea>
+        <label class="ui-label small">备注</label>
+        <input name="note" class="ui-input mb-2">
+        <label class="ui-label small">绑定站点</label>
+        <select name="site" class="ui-select">
+          <option value="">全站通用</option>
+          {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer d-flex justify-content-between w-100 gap-2">
+        <div class="d-flex gap-2">
+          <button type="submit" form="dlgToggle" id="dlgToggleBtn" class="ui-btn ui-btn-sm" hidden>启停切换</button>
+          <button type="submit" form="dlgDelete" id="dlgDeleteBtn" class="ui-btn ui-btn-danger ui-btn-sm" hidden>删除</button>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="ui-btn ui-btn-sm" onclick="this.closest('dialog').close()">取消</button>
+          <button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">保存</button>
+        </div>
+      </div>
+    </form>
+</dialog>
+
+{# 启停/删除隐藏表单（供弹窗按钮 form= 引用，提交后回到本页） #}
+<form method="post" id="dlgToggle" hidden>{% csrf_token %}</form>
+<form method="post" id="dlgDelete" hidden onsubmit="return confirm('确认删除该条目？')">{% csrf_token %}</form>
+
+{% endblock %}
+{% block extrajs %}
+{{ block.super }}
+<script>
+(function () {
+  var dlg = document.getElementById('editModal'),
+      f = document.getElementById('editForm'),
+      title = document.getElementById('dlgTitle'),
+      hint = document.getElementById('dlgMultilineHint'),
+      preview = document.getElementById('dlgPreview'),
+      KIND_LABEL = { keyword: '搜索关键词', image: '搜索图片', link: '搜索链接' },
+      PH = {
+        keyword: '每行一个搜索关键词，如：water bottle',
+        image: '每行一个图片 URL（以图搜图素材）',
+        link: '每行一个商品链接，仅 1688 格式参与全链选品：https://detail.1688.com/offer/123456789.html 或纯编号'
+      };
+  function openDlg(opts) {   // {mode:'edit'|'add', pk, kind, value, note, site, enabled}
+    var isAdd = opts.mode === 'add';
+    title.textContent = (isAdd ? '添加' : '查看 / 修改') + '· ' + (KIND_LABEL[opts.kind] || opts.kind);
+    hint.textContent = isAdd ? '（批量：每行一条）' : '';
+    f.action = isAdd ? '/library/add/' : '/library/' + opts.pk + '/edit/';
+    f.querySelector('[name=kind]').value = opts.kind || '';
+    f.querySelector('[name=value]').value = opts.value || '';
+    f.querySelector('[name=value]').placeholder = PH[opts.kind] || '';
+    f.querySelector('[name=note]').value = opts.note || '';
+    f.querySelector('[name=site]').value = opts.site || '';
+    document.getElementById('dlgToggleBtn').hidden = isAdd;
+    document.getElementById('dlgDeleteBtn').hidden = isAdd;
+    document.getElementById('dlgToggle').action = '/library/' + opts.pk + '/toggle/';
+    document.getElementById('dlgDelete').action = '/library/' + opts.pk + '/delete/';
+    document.getElementById('dlgToggleBtn').textContent = opts.enabled ? '停用' : '启用';
+    if (opts.kind === 'image' && opts.value) {
+      preview.innerHTML = '<img src="' + opts.value.replace(/"/g, '&quot;') + '" style="max-height:150px;border-radius:8px;border:1px solid #e2e8f0" loading="lazy">';
+    } else { preview.innerHTML = ''; }
+    dlg.showModal();
+  }
+  /* 事件委托：卡片点击 = 查看/修改；＋ 添加 = 录入 */
+  document.addEventListener('click', function (e) {
+    var chip = e.target.closest('[data-edit]'), add = e.target.closest('[data-add]');
+    if (chip) {
+      openDlg({ mode: 'edit', pk: chip.dataset.edit, kind: chip.dataset.kind,
+        value: chip.dataset.value, note: chip.dataset.note, site: chip.dataset.site,
+        enabled: chip.dataset.enabled === '1' });
+    } else if (add) {
+      openDlg({ mode: 'add', kind: add.dataset.add, value: '', note: '', site: '' });
+    }
+  });
+  /* 点遮罩关闭（点在 dialog 自身 = backdrop 区域） */
+  dlg.addEventListener('click', function (e) { if (e.target === this) this.close(); });
+})();
+</script>
+{% endblock %}

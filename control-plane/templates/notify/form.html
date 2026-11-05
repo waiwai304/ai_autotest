@@ -1,0 +1,46 @@
+{% extends 'base.html' %}{% block title %}{% if obj %}编辑{% else %}新增{% endif %}通知渠道{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h4 class="mb-0">{% if obj %}编辑通知渠道「{{ obj.name }}」{% else %}新增通知渠道{% endif %}</h4>
+  <a class="ui-btn ui-btn-sm" href="/notify/">← 通知设置</a>
+</div>
+
+<div class="ui-card mt-3"><div class="ui-card-body">
+<form method="post" action="{{ action }}">{% csrf_token %}
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="ui-label">渠道名称 <span class="text-danger">*</span></label>
+      <input type="text" class="ui-input" name="name" required maxlength="100" value="{{ obj.name|default:'' }}" placeholder="如：飞书群机器人 / xiaofan 推送">
+    </div>
+    <div class="col-md-6">
+      <label class="ui-label">Webhook 地址（POST）<span class="text-danger">*</span></label>
+      <input type="url" class="ui-input" name="url" required value="{{ obj.url|default:'' }}" placeholder="https://example.com/webhook">
+    </div>
+    <div class="col-md-4">
+      <label class="ui-label">触发事件</label>
+      <select class="ui-select" name="events">
+        <option value="job_all" {% if not obj or obj.events == 'job_all' %}selected{% endif %}>每任务出结果即推（默认，含任务 ID/结果/HTML 报告）</option>
+        <option value="job_failed" {% if obj and obj.events == 'job_failed' %}selected{% endif %}>仅失败任务即推</option>
+        <option value="campaign" {% if obj and obj.events == 'campaign' %}selected{% endif %}>仅 Campaign 汇总（全部任务结束后推一次）</option>
+      </select>
+    </div>
+    <div class="col-md-8">
+      <label class="ui-label">请求头 JSON（可选鉴权头）</label>
+      <input type="text" class="ui-input font-monospace small" name="headers_json" value='{% if obj %}{{ obj.headers_json }}{% else %}{"Content-Type": "application/json"}{% endif %}' placeholder='{"Content-Type": "application/json", "X-Webhook-Token": "..."}'>
+    </div>
+    <div class="col-12">
+      <label class="ui-label">请求体模板（必须含 {{ '{' }}{{ '{' }}CONTENT_JSON{{ '}' }}{{ '}' }} 或 {{ '{' }}{{ '{' }}content{{ '}' }}{{ '}' }} 占位符）</label>
+      <textarea class="ui-input font-monospace small" name="body_template" rows="4" placeholder='{"target":"","at_user":"ian","content":{{CONTENT_JSON}}}'>{% if obj %}{{ obj.body_template }}{% else %}{"content": {{CONTENT_JSON}}}{% endif %}</textarea>
+      <div class="ui-hint">推荐用 {{ '{' }}{{ '{' }}CONTENT_JSON{{ '}' }}{{ '}' }}（内容作为 JSON 字符串安全替换，引号/换行自动转义）。</div>
+    </div>
+  </div>
+  <div class="mt-3">
+    <button type="submit" class="ui-btn ui-btn-primary">保存</button>
+    <a class="ui-btn" href="/notify/">取消</a>
+    {% if obj %}
+    <span class="text-muted small ms-2">保存后可在列表页「测试」按钮即时验证连通性。</span>
+    {% endif %}
+  </div>
+</form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,194 @@
+services:
+  nginx:
+    image: nginx:1.28-alpine
+    ports:
+      - "${PLATFORM_PORT:-3008}:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static-data:/srv/static:ro
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/artifacts:/data/artifacts:ro
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/reports:/data/reports:ro
+      # 历史全部测试报告（ian：报告中心与 web-blackbox/output/html-report/index.php 同款展示）
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/html-report:/data/html-report:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    env_file:
+      - .env
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 2
+      --timeout 120
+      --access-logfile -
+      --error-logfile -
+    volumes:
+      - ./control-plane:/app
+      - static-data:/app/staticfiles
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/artifacts:/data/artifacts
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/reports:/data/reports
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/run-manifests:/data/run-manifests
+      # 2026-09-29 报告中心删除功能需要写权限（原 :ro）
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/html-report:/data/html-report
+      # 2026-10-08 已知异常知识库（job_log 日志页异常识别，与报告生成器共用同一份）
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/scripts:/data/runner-scripts:ro
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/config:/data/runner-config:ro
+      # 2026-10-15 Skills 页面编辑功能：宿主机源目录直挂（页面编辑直接落盘，单一数据源）
+      - ./skill-packs:/opt/skill-packs
+      # 2026-10-15 Policy 页面编辑 + 测试流程注入：同上
+      - ./policy-packs:/opt/policy-packs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  browser-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.runner
+    env_file:
+      - .env
+    init: true
+    ipc: host
+    command: >
+      celery -A config worker
+      -Q browser
+      --loglevel=INFO
+      --concurrency=${BROWSER_WORKER_CONCURRENCY:-1}
+      --prefetch-multiplier=1
+    volumes:
+      # 现有 Playwright 项目本体挂载（ian：测试在 web-blackbox 执行，产物存 web-blackbox）
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox:/workspace/runner
+      - ./control-plane:/workspace/control-plane
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/artifacts:/data/artifacts
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/reports:/data/reports
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/run-manifests:/data/run-manifests
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  report-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.runner
+    env_file:
+      - .env
+    command: >
+      celery -A config worker
+      -Q report
+      --loglevel=INFO
+      --concurrency=1
+      --prefetch-multiplier=1
+    volumes:
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox:/workspace/runner
+      - ./control-plane:/workspace/control-plane
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/artifacts:/data/artifacts
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/reports:/data/reports
+      - /mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output/django/run-manifests:/data/run-manifests
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    env_file:
+      - .env
+    command: >
+      celery -A config worker
+      -Q scheduler,default
+      --loglevel=INFO
+      --concurrency=1
+      --prefetch-multiplier=1
+    volumes:
+      - ./control-plane:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    env_file:
+      - .env
+    command: >
+      celery -A config beat
+      --loglevel=INFO
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./control-plane:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:7-alpine
+    env_file:
+      - .env
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres-data:
+  redis-data:
+  static-data:

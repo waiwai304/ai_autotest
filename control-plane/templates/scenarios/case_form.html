@@ -1,0 +1,81 @@
+{% extends 'base.html' %}{% block title %}新增测试用例{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-1">
+  <h4 class="mb-0">新增测试用例</h4>
+  <a class="ui-btn ui-btn-sm" href="/scenarios/cases/">← 返回用例说明</a>
+</div>
+<div class="text-muted mb-3 small">按右侧规范在文本框中描述用例 → 系统自动解析并创建（保存为草稿版本 v1，不进入发起测试列表）</div>
+
+<div class="row g-3">
+  {# ---------- 左：规范要点 ---------- #}
+  <div class="col-lg-5">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white"><b>测试用例编写规范（要点）</b></div>
+      <div class="ui-card-body small">
+        <p class="mb-2"><b>一、基本信息</b>（每行一条 <code>字段：值</code>）</p>
+        <table class="ui-table mb-3" style="font-size:12.5px">
+          <tr><td><code>用例名称：</code></td><td>必填，中文 ≤50 字</td></tr>
+          <tr><td><code>用例标识：</code></td><td>必填，唯一，小写字母/数字/连字符，如 <code>favorite-check</code></td></tr>
+          <tr><td><code>用例说明：</code></td><td>必填，一句话说清测什么</td></tr>
+          <tr><td><code>测试端：</code></td><td>必填，<code>PC</code> / <code>WAP</code> / <code>PC+WAP</code></td></tr>
+          <tr><td><code>需要登录：</code></td><td>必填，<code>是</code> / <code>否</code></td></tr>
+          <tr><td><code>含写操作：</code></td><td>必填，<code>是</code> / <code>否</code>（下单/支付/收藏都算）</td></tr>
+          <tr><td><code>自定义设置：</code></td><td>可选，之后每行 <code>参数名=默认值（说明）</code></td></tr>
+        </table>
+        <p class="mb-2"><b>二、步骤清单</b>（先写 <code>步骤：</code>，之后每步一行，竖线分段）</p>
+        <pre class="ui-badge-slate border rounded p-2 mb-2" style="font-size:12px">S1 | PC | 打开商品详情页 | 页面正常加载
+S2 | PC | 点击收藏按钮 | 提示收藏成功
+S3 | 查看顶部导航 | 包含购物车入口</pre>
+        <ul class="text-muted mb-0 ps-3">
+          <li>4 段：<code>编号|端|动作|预期</code>；3 段：省略端；2 段：省略预期</li>
+          <li>每步只做一个动作；预期必须可判定（元素/文案/跳转/状态）</li>
+          <li>步骤编号用例内唯一，建议 <code>S1</code> 递增；双端用 <code>F1</code>(前台) <code>B1</code>(后台) <code>W-F1</code>(WAP前台)</li>
+          <li>完整规范见项目文档 <code>docs/测试用例编写规范.md</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- 右：输入区 ---------- #}
+  <div class="col-lg-7">
+    {% if errors %}
+    <div class="alert alert-danger py-2">
+      <b>解析失败，请修正后重新提交：</b>
+      <ul class="mb-0 ps-3">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <div class="ui-card">
+      <div class="ui-card-head bg-white d-flex justify-content-between align-items-center">
+        <b>用例描述（按规范输入）</b>
+        <button type="button" class="ui-btn ui-btn-sm" id="fill-demo">填入示例</button>
+      </div>
+      <div class="ui-card-body">
+        <form method="post" action="/scenarios/cases/create/">
+          {% csrf_token %}
+          <textarea class="ui-textarea ui-editor font-monospace" name="case_text" id="case_text" rows="22"
+            placeholder="用例名称：&#10;用例标识：&#10;用例说明：&#10;测试端：&#10;需要登录：&#10;含写操作：&#10;步骤：&#10;S1 | PC | ... | ...">{{ case_text|default:'' }}</textarea>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-slate-400 text-[11.5px]">提交后自动创建为 <b>草稿版本 v1</b>，可在用例说明页查看，发布前不参与执行</span>
+            <button type="submit" class="ui-btn ui-btn-primary">解析并创建用例</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('fill-demo').addEventListener('click', () => {
+  document.getElementById('case_text').value = `用例名称：商品收藏功能检查
+用例标识：favorite-check
+用例说明：检查商品详情页收藏与取消收藏功能是否正常
+测试端：PC
+需要登录：是
+含写操作：否
+步骤：
+S1 | PC | 打开任意商品详情页 | 页面正常加载，收藏按钮可见
+S2 | PC | 点击收藏按钮 | 出现收藏成功提示，按钮变为已收藏
+S3 | PC | 再次点击收藏按钮 | 取消收藏成功，按钮恢复未收藏状态`;
+});
+</script>
+{% endblock %}

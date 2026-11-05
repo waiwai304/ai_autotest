@@ -1,0 +1,81 @@
+{% extends 'base.html' %}{% block title %}{{ obj.code }}{% endblock %}
+{% block content %}
+{% if messages %}{% for m in messages %}<div class="alert alert-success py-2">{{ m }}</div>{% endfor %}{% endif %}
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+  <h4 class="mb-0">{{ obj.name|default:obj.code }} <small class="text-slate-400">{{ obj.code }}</small>
+    {% if obj.locked %}<span class="ui-badge ui-badge-dark">锁定·强制注入测试</span>{% else %}<span class="ui-badge ui-badge-slate">未锁定</span>{% endif %}
+  </h4>
+  <div class="d-flex gap-2">
+    {% if obj.locked %}
+    <form method="post" action="/policies/{{ obj.code }}/lock/" onsubmit="return confirm('解锁安全基线规则包 {{ obj.code }}？解锁后可编辑修改。')">
+      {% csrf_token %}<button type="submit" class="ui-btn ui-btn-sm">解锁后编辑</button>
+    </form>
+    {% else %}
+    <a class="ui-btn ui-btn-sm" href="/policies/{{ obj.code }}/edit/">编辑修改</a>
+    <form method="post" action="/policies/{{ obj.code }}/lock/" onsubmit="return confirm('锁定规则包 {{ obj.code }}？锁定后编辑入口关闭，且发起测试时强制注入。')">
+      {% csrf_token %}<button type="submit" class="ui-btn btn-outline-dark ui-btn-sm">锁定</button>
+    </form>
+    {% endif %}
+    <a class="ui-btn ui-btn-sm" href="/policies/">← 返回列表</a>
+  </div>
+</div>
+
+{% if parse_errors %}
+<div class="alert alert-danger py-2"><b>当前内容解析失败：</b><ul class="mb-0 ps-3">{% for e in parse_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white py-2"><b>具体规则</b> <span class="text-slate-400 text-[11.5px]">（{{ rules|length }} 条 · severity 分级：critical &gt; high &gt; medium &gt; low）</span></div>
+      <div class="ui-card-body py-2">
+        <table class="ui-table mb-0" style="font-size:13px">
+          <tr><th style="width:200px">规则 ID</th><th style="width:90px">级别</th><th>规则内容</th></tr>
+          {% for r in rules %}
+          <tr>
+            <td><code>{{ r.id }}</code></td>
+            <td>{% if r.severity == 'critical' %}<span class="ui-badge ui-badge-red">critical</span>
+              {% elif r.severity == 'high' %}<span class="ui-badge ui-badge-amber">high</span>
+              {% elif r.severity == 'medium' %}<span class="ui-badge ui-badge-sky">medium</span>
+              {% else %}<span class="ui-badge ui-badge-slate">low</span>{% endif %}</td>
+            <td>{{ r.text }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="ui-card mb-3">
+      <div class="ui-card-head bg-white py-2"><b>规则包信息</b></div>
+      <div class="ui-card-body py-2" style="font-size:13px">
+        <table class="ui-table mb-0">
+          <tr><td class="text-slate-400" style="width:110px">编码</td><td><code>{{ obj.code }}</code></td></tr>
+          <tr><td class="text-slate-400">名称</td><td>{{ obj.name|default:'-' }}</td></tr>
+          <tr><td class="text-slate-400">平台版本</td><td>v{{ obj.version }}（每次保存 +1）</td></tr>
+          <tr><td class="text-slate-400">锁定状态</td><td>{% if obj.locked %}锁定（发起测试强制注入，编辑入口关闭）{% else %}未锁定（可编辑；发起测试按勾选注入）{% endif %}</td></tr>
+          <tr><td class="text-slate-400">最近发布</td><td>{{ obj.published_at|date:'Y-m-d H:i'|default:'未发布' }}</td></tr>
+          <tr><td class="text-slate-400">内容指纹</td><td><small><code>{{ obj.sha256|slice:':16' }}…</code></small></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="ui-card">
+      <div class="ui-card-head bg-white py-2"><b>源文件与生效方式</b></div>
+      <div class="ui-card-body py-2" style="font-size:13px">
+        <div class="mb-1">路径：<code style="font-size:12px">policy-packs/{{ obj.code }}/policy.yaml</code></div>
+        {% if has_file %}
+          {% if in_sync %}<span class="ui-badge ui-badge-green">与平台一致（hash 相同）</span>
+          {% else %}<span class="ui-badge ui-badge-amber">源文件与平台不一致（源 v{{ src_version }}）</span>{% endif %}
+        {% else %}
+          <span class="ui-badge ui-badge-red">源文件缺失</span>
+        {% endif %}
+        <div class="text-muted mt-2" style="font-size:12px">
+          生效链路：<b>发起测试</b>（本包默认勾选{% if obj.locked %}且锁定包<b>强制注入不可取消</b>{% endif %}）→
+          <b>执行环境</b>（注入 <code>POLICY_PACKS / POLICY_RULES</code> 环境变量，Job 日志记录）→
+          <b>Campaign 报告</b>（安全基线章节逐条呈现）。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

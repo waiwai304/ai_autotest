@@ -1,0 +1,106 @@
+{% extends 'base.html' %}{% block title %}{{ form.name|default:'新增网站'|default:'新增网站' }}{% if mode == 'edit' %}编辑网站{% else %}新增网站{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">{% if mode == 'edit' %}编辑网站{% else %}新增网站{% endif %}</h4>
+  <a class="ui-btn ui-btn-sm" href="/sites/">← 返回网站列表</a>
+</div>
+
+<div class="row"><div class="col-lg-8">
+<div class="ui-card"><div class="ui-card-body">
+  {% if messages %}{% for m in messages %}<div class="ui-alert ui-alert-danger">{{ m.message }}</div>{% endfor %}{% endif %}
+  <form method="post">{% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="ui-label">网站名称 <span class="text-danger">*</span></label>
+        <input name="name" class="ui-input" value="{{ form.name|default:'' }}" placeholder="如 OneBuy vtest2026" required>
+      </div>
+      <div class="col-md-6">
+        <label class="ui-label">编码（slug，唯一）<span class="text-danger">*</span></label>
+        <input name="code" class="ui-input" value="{{ form.code|default:'' }}" placeholder="如 vtest2026" pattern="[a-z0-9-]+" required>
+      </div>
+      <div class="col-12"><hr class="my-1"><div class="text-muted small mb-2">各端域名（同结构站点：路径表复用下方「站点档案」，域名自动覆盖生效）</div></div>
+      <div class="col-md-4">
+        <label class="ui-label">PC 前台 <span class="text-danger">*</span></label>
+        <input name="pc_base_url" class="ui-input" value="{{ form.pc_base_url|default:'' }}" placeholder="https://vtest2026.example.com" required>
+        <div class="ui-hint small">按原样使用（页面路径 /zh-cn/… 由站点档案提供，不在此填）。</div>
+        {% if errors.pc_base_url %}<div class="text-danger small mt-1">{{ errors.pc_base_url }}</div>{% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="ui-label">WAP 前台 <span class="text-danger">*</span> <span class="text-slate-400 text-[11.5px]">（按原样使用，请填完整入口路径）</span></label>
+        <input name="wap_base_url" class="ui-input" value="{{ form.wap_base_url|default:'' }}" placeholder="https://vtest2026.example.com/wap" required>
+        {% if errors.wap_base_url %}<div class="text-danger small mt-1">{{ errors.wap_base_url }}</div>{% endif %}
+        <div class="ui-hint small">测试直接使用此处填写的网址 + hash 路由（不自动拼接 /wap）。WAP 在 /wap 路径下就填到 /wap。</div>
+      </div>
+      <div class="col-md-4">
+        <label class="ui-label">管理后台（含安全入口段）</label>
+        <input name="boss_base_url" class="ui-input" value="{{ form.boss_base_url|default:'' }}" placeholder="https://boss.vtest2026.example.com/xDDQtbeo">
+        {% if errors.boss_base_url %}<div class="text-danger small mt-1">{{ errors.boss_base_url }}</div>{% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="ui-label">站点类别（路径档案）</label>
+        <select name="profile_key" class="ui-input">
+          {% for pid, pname, padapter in profiles %}
+          <option value="{{ pid }}" {% if form.profile_key == pid or not form.profile_key and pid == 'onebuy-v2026' %}selected{% endif %}>{{ pname }}（{{ pid }}）</option>
+          {% endfor %}
+          {% if form.profile_key and form.profile_key not in profile_ids %}<option value="{{ form.profile_key }}" selected>{{ form.profile_key }}（自定义/未在档案表中）</option>{% endif %}
+        </select>
+        <div class="text-muted small mt-1">
+          <b>onebuy-v2026</b>：OneBuy 商城结构站点（复用全套页面路径 / 13 步全链路）；<br>
+          <b>generic-web</b>：官网 / 企业站 / 任意非商城站点（通用冒烟：能打开、有内容、无严重前端错误）。
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="ui-label">Adapter</label>
+        <input name="adapter_key" class="ui-input" value="{{ form.adapter_key|default:'onebuy' }}">
+      </div>
+      <div class="col-md-2">
+        <label class="ui-label">并发</label>
+        <input name="max_concurrency" type="number" min="1" max="4" class="ui-input" value="{{ form.max_concurrency|default:'2' }}">
+      </div>
+      <div class="col-md-2">
+        <label class="ui-label">RPM</label>
+        <input name="requests_per_minute" type="number" min="1" class="ui-input" value="{{ form.requests_per_minute|default:'30' }}">
+      </div>
+      <div class="col-md-2">
+        <label class="ui-label">权重</label>
+        <input name="weight" type="number" min="0" max="9999" step="1" class="ui-input" value="{{ form.weight|default:'0' }}" placeholder="0">
+        <div class="ui-hint small">越大越靠前（执行中心）</div>
+      </div>
+      <div class="col-12"><hr class="my-1"><div class="text-muted small mb-2">测试账号（测试执行遇到登录时自动使用；不填则回退全局 .env 账号）</div></div>
+      <div class="col-md-3">
+        <label class="ui-label">前台账号</label>
+        <input name="front_account" class="ui-input" value="{{ form.front_account|default:'' }}" placeholder="如 ian2564039292@qq.com">
+      </div>
+      <div class="col-md-3">
+        <label class="ui-label">前台密码</label>
+        <input name="front_password" type="password" class="ui-input" value="" placeholder="{% if has_front_pwd %}已设置 · 留空保持不变{% else %}输入测试密码{% endif %}">
+      </div>
+      <div class="col-md-3">
+        <label class="ui-label">后台账号</label>
+        <input name="boss_account" class="ui-input" value="{{ form.boss_account|default:'' }}" placeholder="如 admin">
+      </div>
+      <div class="col-md-3">
+        <label class="ui-label">后台密码</label>
+        <input name="boss_password" type="password" class="ui-input" value="" placeholder="{% if has_boss_pwd %}已设置 · 留空保持不变{% else %}输入测试密码{% endif %}">
+      </div>
+      <div class="col-12"><hr class="my-1"><div class="ui-summary mb-2"><span class="ui-badge ui-badge-purple">AI 探索专用</span><span>与真实 Job 账号隔离，防写操作污染 · 留空 = 复用前台账号</span></div></div>
+      <div class="col-md-3">
+        <label class="ui-label">探索账号</label>
+        <input name="explore_account" class="ui-input" value="{{ form.explore_account|default:'' }}" placeholder="留空 = 复用前台测试账号">
+      </div>
+      <div class="col-md-3">
+        <label class="ui-label">探索密码</label>
+        <input name="explore_password" type="password" class="ui-input" value="" placeholder="{% if has_explore_pwd %}已设置 · 留空保持不变{% else %}输入探索专用密码（可留空）{% endif %}">
+      </div>
+      <div class="col-12">
+        <div class="form-check form-check-inline mt-1">
+          <input class="ui-check" type="checkbox" name="enabled" id="enb" {% if mode == 'new' or form.enabled == True %}checked{% endif %}>
+          <label class="form-check-label" for="enb">启用（发起测试时可选）</label>
+        </div>
+      </div>
+    </div>
+    <button class="ui-btn ui-btn-primary mt-3">{% if mode == 'edit' %}保存修改{% else %}创建网站{% endif %}</button>
+  </form>
+</div></div>
+</div></div>
+{% endblock %}

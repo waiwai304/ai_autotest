@@ -1,0 +1,136 @@
+{% load campaigns_extras %}{% comment %}AI 建用例·预览编辑态（2026-11-04 ian：从 ai_create.html 拆出，供整页渲染与 SSE 流式完成后的局部替换共用）
+依赖上下文：plan / site / sites / actions / reg_map / cfg / rescue_pk / rescue_code / from_explore{% endcomment %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white d-flex justify-content-between align-items-center">
+        <b>AI 解析结果（{{ plan.steps|length }} 步{% if plan.unknown %}，<span class="text-danger">{{ plan.unknown }} 步待实现</span>{% endif %}）</b>
+        <span class="text-slate-400 text-[11.5px]">可直接修改后再创建</span>
+      </div>
+      <div class="ui-card-body">
+        <form method="post" action="/scenarios/cases/ai-create/">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create">
+          <input type="hidden" name="site_pk" value="{{ site.pk }}">
+          <input type="hidden" name="case_text" value="{{ plan.case_text }}">
+          <input type="hidden" name="description" value="{{ plan.description }}">
+          {% if rescue_pk %}<input type="hidden" name="rescue_pk" value="{{ rescue_pk }}">{% endif %}
+
+          {% if rescue_pk %}
+          <div class="alert alert-warning py-2 small mb-3">
+            <b>修正模式</b>：确认后将把用例 <code>{{ rescue_code }}</code> 升级为新版本（原版本保留可回溯），spec 自动重新生成。
+          </div>
+          {% elif from_explore %}
+          <div class="alert alert-info py-2 small mb-3">本计划来自 <a href="/scenarios/explore/{{ from_explore }}/">探索 {{ from_explore }}</a> 的 AI 修正结果，确认创建前可继续编辑。</div>
+          {% endif %}
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-5">
+              <label class="ui-label small mb-1">用例名称</label>
+              <input class="ui-input" name="name" value="{{ plan.name }}" maxlength="80">
+            </div>
+            <div class="col-md-3">
+              <label class="ui-label small mb-1">用例标识（唯一）</label>
+              <input class="ui-input font-monospace" name="code" value="{{ plan.code_suggest }}" maxlength="60">
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-3">
+              <div class="form-check">
+                <input class="ui-check" type="checkbox" name="requires_auth" id="ra" {% if plan.requires_auth %}checked{% endif %}>
+                <label class="form-check-label small" for="ra">需要登录</label>
+              </div>
+              {% for e in plan.ends %}
+              <div class="form-check">
+                <input class="ui-check" type="checkbox" name="end_{{ e }}" id="end_{{ e }}" checked>
+                <label class="form-check-label small text-uppercase" for="end_{{ e }}">{{ e }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="table-responsive">
+          <table class="ui-table" style="font-size:12.5px">
+            <thead><tr><th style="width:44px">编号</th><th style="width:70px">端</th><th style="width:190px">动作</th><th>参数</th><th>步骤名称</th><th>预期</th></tr></thead>
+            <tbody>
+            {% for st in plan.steps %}
+              {% with reg=reg_map|get_item:st.action %}
+              <tr class="{% if st.action == 'unknown' %}table-danger{% elif reg and reg.status == 'placeholder' %}table-warning{% endif %}">
+                <td><input type="hidden" name="st_{{ forloop.counter }}_exists" value="1"><b>{{ st.id }}</b></td>
+                <td>
+                  <select class="ui-select" name="st_{{ forloop.counter }}_side">
+                    <option value="pc" {% if st.side == 'pc' %}selected{% endif %}>PC</option>
+                    <option value="wap" {% if st.side == 'wap' %}selected{% endif %}>WAP</option>
+                  </select>
+                </td>
+                <td>
+                  <input type="hidden" name="st_{{ forloop.counter }}_raw" value="{{ st.ai_action_raw|default:'' }}">
+                  <select class="ui-select" name="st_{{ forloop.counter }}_action">
+                    {% for a in actions %}<option value="{{ a.action }}" {% if st.action == a.action %}selected{% endif %}>{{ a.action }}·{{ a.label }}</option>{% endfor %}
+                    <option value="unknown" {% if st.action == 'unknown' %}selected{% endif %}>unknown·待实现</option>
+                  </select>
+                </td>
+                <td style="min-width:190px">
+                  {% if st.action == 'unknown' %}
+                    <div class="text-danger small mb-1">白名单外{% if st.ai_action_raw %}：模型输出「{{ st.ai_action_raw }}」{% endif %}
+                      <span class="text-muted">→ 可在左侧改选动作并填写下方参数后再探索</span></div>
+                  {% endif %}
+                  {# 2026-11-04 ian：参数区对所有步骤常显（含 unknown），支持人工补齐/自定义 #}
+                  <input class="ui-input mb-1" name="st_{{ forloop.counter }}_p_keyword" placeholder="关键词 keyword（search）" value="{{ st.params.keyword|default:'' }}">
+                  <input class="ui-input mb-1" name="st_{{ forloop.counter }}_p_path" placeholder="路径 path（goto_path，/ 开头）" value="{{ st.params.path|default:'' }}">
+                  <input class="ui-input mb-1" name="st_{{ forloop.counter }}_p_text" placeholder="文本 text（check_text 断言 / click_text 按钮文本）" value="{{ st.params.text|default:'' }}">
+                  <input class="ui-input" name="st_{{ forloop.counter }}_p_fields" placeholder="字段 fields（fill_form，如 姓名=测试;留言=自动化测试）" value="{{ st.params.fields|default:'' }}">
+                  {% if st.action == 'unknown' %}
+                    <div class="text-muted" style="font-size:11px">改选动作后点「探索验证」即可按新参数实走</div>
+                  {% endif %}
+                </td>
+                <td><input class="ui-input" name="st_{{ forloop.counter }}_name" value="{{ st.name }}" maxlength="120"></td>
+                <td><input class="ui-input" name="st_{{ forloop.counter }}_expect" value="{{ st.expect }}" maxlength="200"></td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+            </tbody>
+          </table>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-slate-400 text-[11.5px]">
+              创建即发布 v1 并后台生成 spec（真实步骤可执行 / 占位步骤标记待实现）
+              {% if plan.ai_stats %}
+                <span class="d-block mt-1">本次 AI 调用耗时
+                  {% widthratio plan.ai_stats.elapsed_ms 1000 1 %}s
+                  {% if plan.ai_stats.total_tokens %}
+                    · tokens：输入 {{ plan.ai_stats.prompt_tokens|default:'-' }} / 输出 {{ plan.ai_stats.completion_tokens|default:'-' }} / 合计 {{ plan.ai_stats.total_tokens }}
+                  {% else %}
+                    · 网关未返回用量（单次规划通常约 2,000~6,000 tokens）
+                  {% endif %}
+                </span>
+              {% endif %}
+            </span>
+            <div class="gap-2">
+              <button class="ui-btn" type="submit" name="action" value="parse" formnovalidate data-loading="解析中…">← 重新解析</button>
+              {% if not rescue_pk %}<button class="ui-btn" type="submit" name="action" value="explore"
+                data-slow="1" data-loading="探索验证中…" data-hint="真实浏览器逐步实走站点，约 30~180 秒，请勿关闭页面"
+                title="browser-worker 用真实浏览器按计划实走站点，验证每步可达/可点/可断言，失败证据可交给 AI 修正">探索验证</button>{% endif %}
+              <button class="ui-btn ui-btn-primary" type="submit" name="action" value="create"
+                data-slow="1" data-loading="生成中…" data-hint="正在生成用例与可执行 spec">{% if rescue_pk %}确认升级版本{% else %}确认创建用例{% endif %}</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="ui-card">
+      <div class="ui-card-head bg-white"><b>目标站点</b></div>
+      <div class="ui-card-body small">
+        <p class="mb-1"><b>{{ site.name }}</b>（{{ site.code }}）</p>
+        {% if site.pc_base_url %}<p class="mb-1 text-muted">PC：{{ site.pc_base_url }}</p>{% endif %}
+        {% if site.wap_base_url %}<p class="mb-1 text-muted">WAP：{{ site.wap_base_url }}</p>{% endif %}
+        <p class="mb-0 text-muted">说明：{{ plan.description }}</p>
+      </div>
+    </div>
+    <div class="ui-card mt-3">
+      <div class="ui-card-head bg-white"><b>原始口语</b></div>
+      <div class="ui-card-body"><pre class="mb-0" style="white-space:pre-wrap;font-size:12.5px">{{ plan.case_text }}</pre></div>
+    </div>
+  </div>
+</div>

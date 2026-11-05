@@ -1,0 +1,63 @@
+{% extends 'base.html' %}{% block title %}测试数据台账{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h4 class="mb-0">测试数据台账</h4>
+  <div class="ui-summary"><svg class="w-3.5 h-3.5"><use href="/static/vendor/lucide-sprite.svg#i-database"/></svg>单号 / 账号归属留痕 · 误操作秒查波及范围
+    <details class="ui-fold ml-2 inline-flex"><summary>详情</summary><div class="ui-fold-body absolute z-10 right-0 top-7 w-[min(88vw,420px)] bg-white border shadow-lg">测试数据安全铁律配套：订单 / 快递单 / 包裹 单号与归属账号全留痕，输入任一单号即可秒查归属，误操作时快速定位波及范围。</div></details>
+  </div>
+</div>
+
+<div class="ui-card mt-3"><div class="ui-card-body py-2">
+<form method="get" class="row g-2 align-items-center">
+  <div class="col-md-3">
+    <input type="text" class="ui-input" name="q" value="{{ q }}" placeholder="搜索单号 / 归属账号（如 O202610150001 / at2610160918）">
+  </div>
+  <div class="col-md-3">
+    <select class="ui-select" name="kind">
+      <option value="">全部类型（{{ counts.order|default:0 }}单/{{ counts.express|default:0 }}快递/{{ counts.package|default:0 }}包裹）</option>
+      <option value="order" {% if f_kind == 'order' %}selected{% endif %}>订单（{{ counts.order|default:0 }}）</option>
+      <option value="express" {% if f_kind == 'express' %}selected{% endif %}>快递单（{{ counts.express|default:0 }}）</option>
+      <option value="package" {% if f_kind == 'package' %}selected{% endif %}>包裹（{{ counts.package|default:0 }}）</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <input type="text" class="ui-input" name="site" value="{{ f_site }}" placeholder="站点（如 vtest2026）">
+  </div>
+  <div class="col-md-2"><input type="date" class="ui-input" name="date_from" value="{{ date_from }}"></div>
+  <div class="col-md-2"><input type="date" class="ui-input" name="date_to" value="{{ date_to }}"></div>
+  <div class="col-12 mt-1">
+    <button class="ui-btn ui-btn-primary ui-btn-sm">筛选</button>
+    <a class="ui-btn ui-btn-sm" href="/ledger/">重置</a>
+    <span class="text-muted small ms-2">共 {{ total }} 条</span>
+  </div>
+</form>
+</div></div>
+
+<div class="ui-card mt-3"><div class="ui-card-body p-0">
+<table class="ui-table">
+<tr><th>时间</th><th>类型</th><th>单号</th><th>归属账号</th><th>实付金额</th><th>站点</th><th>来源任务</th><th>备注</th></tr>
+{% for r in page_obj.object_list %}
+<tr>
+  <td class="text-[11.5px]">{{ r.created_at|date:'m-d H:i' }}</td>
+  <td>{% if r.kind == 'order' %}<span class="ui-badge ui-badge-blue">订单</span>{% elif r.kind == 'express' %}<span class="ui-badge ui-badge-green">快递单</span>{% else %}<span class="ui-badge ui-badge-amber">包裹</span>{% endif %}</td>
+  <td><code>{{ r.sn }}</code></td>
+  <td class="text-[11.5px]">{{ r.account|default:'-' }}</td>
+  <td class="text-[11.5px]">{{ r.amount|default:'-' }}</td>
+  <td class="text-[11.5px]">{{ r.site_code }}</td>
+  <td class="text-[11.5px]"><a href="/campaigns/{{ r.campaign_id }}/jobs/{{ r.job_id }}/">JOB-{{ r.job_id|stringformat:'06d' }}-{{ r.device|upper }}</a></td>
+  <td class="small text-muted">{{ r.note }}</td>
+</tr>
+{% empty %}<tr><td colspan="8" class="text-center text-muted py-4">
+  {% if q or f_kind or f_site or date_from or date_to %}没有符合筛选条件的台账记录{% else %}暂无台账记录——全链用例执行后自动记录订单/快递/包裹单号{% endif %}
+</td></tr>{% endfor %}
+</table>
+</div></div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-3"><ul class="pagination pagination-sm">
+  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{% for k, v in params.items %}{{ k }}={{ v|urlencode }}&{% endfor %}">上一页</a></li>{% endif %}
+  {% for p in page_obj.paginator.page_range %}{% if p == page_obj.number %}<li class="page-item active"><span class="page-link">{{ p }}</span></li>{% elif p > page_obj.number|add:-3 and p < page_obj.number|add:3 %}<li class="page-item"><a class="page-link" href="?page={{ p }}&{% for k, v in params.items %}{{ k }}={{ v|urlencode }}&{% endfor %}">{{ p }}</a></li>{% endif %}{% endfor %}
+  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{% for k, v in params.items %}{{ k }}={{ v|urlencode }}&{% endfor %}">下一页</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

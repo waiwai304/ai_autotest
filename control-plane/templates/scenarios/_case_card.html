@@ -1,0 +1,179 @@
+{% comment %}用例宫格卡片 + 原生 dialog 详情弹窗（2026-10-15 ian：宫格布局，点击查看详情）
+入参：c=用例 dict；src='scan'（源码扫描）| 'doc'（页面创建）
+2026-11-04 ian：外层 data-* 供流程库筛选/排序（端/登录/购物/后台/状态/权重/创建/更新）{% endcomment %}
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3" id="case-{{ c.code }}"
+     data-src="{{ src }}" data-ends="{{ c.ends|join:',' }}"
+     data-auth="{% if c.auth %}1{% else %}0{% endif %}"
+     data-shop="{% if c.shop %}1{% else %}0{% endif %}"
+     data-backend="{% if c.backend %}1{% else %}0{% endif %}"
+     data-enabled="{% if c.enabled is False %}0{% else %}1{% endif %}"
+     data-weight="{{ c.weight|default:'0' }}"
+     data-created="{{ c.created_ts|default:'0' }}" data-updated="{{ c.updated_ts|default:'0' }}">
+  <div class="ui-card case-card h-100" data-dlg="dlg-{{ c.code }}">
+    <div class="ui-card-body py-2 px-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="min-w-0">
+          <b class="text-[15.5px] leading-snug" style="font-size:15.5px">{{ c.name }}</b>
+          <div class="text-slate-400 mt-0.5" style="font-size:11.5px"><code class="text-slate-400">{{ c.code }}</code></div>
+        </div>
+        {% if src == 'doc' %}<span class="ui-badge ui-badge-amber">页面创建</span>
+        {% else %}<span class="ui-badge ui-badge-sky">源码扫描</span>{% endif %}
+      </div>
+      <div class="my-1">
+        {% for e in c.ends %}{% if e == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>{% else %}<span class="ui-badge ui-badge-green">WAP</span>{% endif %}{% endfor %}
+        {% if src == 'doc' %}
+          {% if c.impl == 'auto-v1' %}<span class="ui-badge ui-badge-green">auto-v1 自动执行</span>
+          {% elif c.impl == 'manual' %}<span class="ui-badge ui-badge-slate">手工实现</span>
+          {% else %}<span class="ui-badge ui-badge-slate border">skeleton 骨架</span>{% endif %}
+        {% endif %}
+        {% if c.checks.requires_auth %}<span class="ui-badge ui-badge-dark">需登录</span>{% endif %}
+        {% if c.checks.mutating %}<span class="ui-badge ui-badge-red">写操作</span>{% endif %}
+        {% if c.checks.reusable %}<span class="ui-badge ui-badge-green">可复用</span>{% elif c.checks.reusable is False %}<span class="ui-badge ui-badge-red">复用性不达标</span>{% endif %}
+        {% if c.enabled is False %}<span class="ui-badge ui-badge-red">停用</span>{% endif %}
+      </div>
+      <div class="text-muted desc-clamp">{{ c.desc|default:'（无说明）' }}</div>
+    </div>
+    <div class="bg-white d-flex justify-content-between align-items-center flex-wrap gap-1 py-1 px-3" style="font-size:12.5px">
+      <span class="text-slate-400">
+        {{ c.steps|length }} 步
+        {% if c.created_ts %}· 建 {{ c.created_at|date:'m-d' }}{% if c.updated_ts and c.updated_at|date:'YmdHi' != c.created_at|date:'YmdHi' %} · 改 {{ c.updated_at|date:'m-d' }}{% endif %}{% else %}· 内置{% endif %}
+      </span>
+      <span class="d-inline-flex gap-1 no-open">
+        {% if c.pk %}
+        <a class="ui-btn ui-btn-sm py-0" href="/campaigns/new/?scenario={{ c.code }}" title="以该流程发起测试">发起</a>
+        <button class="ui-btn ui-btn-sm py-0" title="修改流程名称"
+                onclick="openRename({{ c.pk }}, '{{ c.code|escapejs }}', '{{ c.name|escapejs }}')">改名</button>
+        <button class="ui-btn ui-btn-sm py-0" title="展示权重——数值越大越靠前，未设按创建时间倒序"
+                onclick="openWeight({{ c.pk }}, '{{ c.code|escapejs }}', {{ c.weight|default:'0' }})">{% if c.weight %}权重 {{ c.weight }}{% else %}权重{% endif %}</button>
+        <form method="post" action="/scenarios/{{ c.pk }}/toggle/" class="d-inline">{% csrf_token %}
+          <button type="submit" class="btn btn-outline-{% if c.enabled %}warning{% else %}success{% endif %} btn-sm py-0" title="{% if c.enabled %}停用后发起测试页不可见{% else %}恢复发起测试页可见{% endif %}">{% if c.enabled %}停用{% else %}启用{% endif %}</button>
+        </form>
+        <form method="post" action="/scenarios/{{ c.pk }}/delete/" class="d-inline">{% csrf_token %}
+          <button type="submit" class="ui-btn ui-btn-danger ui-btn-sm py-0" title="删除流程及全部历史版本"
+                  onclick="return confirm('确定删除流程「{{ c.code }}」？\n将连同 {{ c.version }} 个历史版本一起删除，不可恢复！')">删除</button>
+        </form>
+        {% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+
+<dialog class="case-dlg" id="dlg-{{ c.code }}">
+  <div class="dlg-head d-flex justify-content-between align-items-center">
+    <div><b>{{ c.name }}</b> <span class="text-slate-400" style="font-size:12.5px;font-weight:400"><code class="text-slate-400">{{ c.code }}</code></span>
+      {% if src == 'doc' %}<span class="ui-badge ui-badge-amber">页面创建</span>{% else %}<span class="ui-badge ui-badge-sky">源码扫描</span>{% endif %}
+      {% for e in c.ends %}{% if e == 'pc' %}<span class="ui-badge ui-badge-blue">PC</span>{% else %}<span class="ui-badge ui-badge-green">WAP</span>{% endif %}{% endfor %}
+    </div>
+    <button class="ui-btn ui-btn-sm py-0" onclick="this.closest('dialog').close()">关闭 ✕</button>
+  </div>
+  <div class="dlg-body" style="font-size:13px">
+
+    {% if src == 'doc' %}
+    {# ===== 页面创建用例：创建文案 + 自动生成规则 ===== #}
+    <div class="mb-3">
+      <div class="fw-bold mb-1">① 创建时的用例描述文案{% if c.source_rebuilt %} <span class="ui-badge ui-badge-slate border" title="该用例创建于原文存档功能上线前，此文案由步骤信息按规范格式重建">历史用例·重建</span>{% endif %}</div>
+      {% if c.source_text %}
+      <div class="src-text">{{ c.source_text }}</div>
+      {% else %}
+      <div class="text-slate-400">（创建原文未存档——该用例创建于 2026-10-15 之前，仅保留了字段与步骤）</div>
+      {% endif %}
+      <details class="ui-fold mt-1"><summary>格式规范</summary><div class="ui-fold-body">格式规范见《测试用例编写规范》：字段行 `字段：值` + 步骤行 `编号|端|动作|预期`（2~4 段竖线分隔），解析器 apps/scenarios/case_parser.py 自动识别。</div></details>
+    </div>
+
+    <div class="mb-3">
+      <div class="fw-bold mb-1">② 解析后的用例信息</div>
+      <table class="ui-table mb-1" style="font-size:12.5px">
+        <tr><td style="width:110px" class="text-slate-400">用例标识</td><td><code>{{ c.code }}</code></td></tr>
+        <tr><td class="text-slate-400">用例名称</td><td>{{ c.name }}</td></tr>
+        <tr><td class="text-slate-400">用例说明</td><td>{{ c.desc|default:'-' }}</td></tr>
+        <tr><td class="text-slate-400">需要登录 / 写操作</td><td>{% if c.checks.requires_auth %}需登录{% else %}无需登录{% endif %} / {% if c.checks.mutating %}含写操作{% else %}只读{% endif %}</td></tr>
+        {% if c.spec %}<tr><td class="text-slate-400">执行入口</td><td><code>{{ c.spec }}</code>（双端同一骨架，Playwright project 决定浏览器）</td></tr>{% endif %}
+        {% if c.checks.settings %}
+        <tr><td class="text-slate-400">自定义设置</td><td>{% for s in c.checks.settings %}<span class="ui-badge ui-badge-slate border"><code>{{ s.key }}</code>={{ s.default }}（{{ s.label }}）</span> {% endfor %}</td></tr>
+        {% endif %}
+      </table>
+    </div>
+
+    <div class="mb-3">
+      <div class="fw-bold mb-1">③ 详细规则与步骤（{{ c.steps|length }} 步）</div>
+      <table class="ui-table table-striped mb-1" style="font-size:12.5px">
+        <tr><th style="width:52px">步骤</th><th style="width:52px">端</th><th>动作 / 内容</th><th style="width:30%">预期</th></tr>
+        {% for s in c.steps %}
+        <tr>
+          <td><b>{{ s.id }}</b></td><td>{{ s.side|default:'-' }}</td>
+          <td>{{ s.name }}{% if s.action %} <span class="ui-badge ui-badge-green mt-0" title="自动识别的动作原语">{{ s.action }}</span>{% endif %}</td>
+          <td class="text-slate-400">{{ s.expect|default:'-' }}</td>
+        </tr>
+        {% if s.note %}<tr class="table-light"><td></td><td></td><td colspan="2" class="text-slate-400" style="font-size:12px">↳ 自动执行说明：{{ s.note }}</td></tr>{% endif %}
+        {% endfor %}
+      </table>
+    </div>
+
+    <div class="mb-2">
+      <details class="ui-fold mb-2"><summary>④ 自动填充生成规则（创建后系统自动完成）</summary><div class="ui-fold-body">
+      {% if c.impl == 'auto-v1' %}
+      <div class="alert alert-success py-2 mb-2" style="font-size:12.5px">
+        实现模式：<b>auto-v1 自动执行</b>——口语步骤已由动作引擎翻译为真实 Playwright 测试，可直接勾选执行。
+      </div>
+      <ul class="mb-1" style="font-size:12.5px;padding-left:1.1rem">
+        <li><b>动作识别</b>（apps/scenarios/doc_actions.py）：按优先级匹配步骤文本 → 动作原语
+          <code>check_cart &gt; add_cart &gt; favorite &gt; open_first_product &gt; search &gt; login &gt; open_home</code>；
+          未命中时兜底：提取 <code>/路径</code> 直达（goto_path）或引号文本断言（check_text）。</li>
+        <li><b>前置自动补充</b>：每个步骤自包含——加购/校验购物车前自动补「打开商品详情」，打开详情前自动补「站内搜索」，搜索前自动补「登录态」，递归展开去重后写入 spec。</li>
+        <li><b>生成产物</b>：spec 文件 <code>{% if c.spec %}{{ c.spec }}{% else %}tests/doc-{{ c.code }}.spec.ts{% endif %}</code>——每步调用动作库 <code>tests/helpers/docflow.ts</code> 真实执行并断言（含 API 捕获留证 + 每步截图）。</li>
+        <li><b>站点适配层</b>：站点改版只需修改 docflow.ts 动作库，全部自动用例同步生效，无需逐个改 spec。</li>
+      </ul>
+      {% elif c.impl == 'manual' %}
+      <div class="alert alert-secondary py-2 mb-2" style="font-size:12.5px">
+        实现模式：<b>手工实现（doc_impl=manual）</b>——spec 由人工编写并受保护，自动生成不会覆盖；动作引擎跳过该用例。
+      </div>
+      <div class="text-slate-400" style="font-size:12.5px">执行入口：<code>{{ c.spec|default:'-' }}</code>，步骤细节以 spec 源码为准。</div>
+      {% else %}
+      <div class="alert alert-warning py-2 mb-2" style="font-size:12.5px">
+        实现模式：<b>skeleton 骨架</b>——步骤含动作库未覆盖的动作（如 WAP 端/收藏），生成占位骨架：每步可达性留证 + 截图 + API 捕获，并标记 skip 防假绿；补全实现后即为真实测试。
+      </div>
+      {% endif %}
+    </div></details></div>
+    {% else %}
+    {# ===== 源码扫描用例 ===== #}
+    <div class="mb-3">
+      <div class="fw-bold mb-1">① 用例信息</div>
+      <table class="ui-table mb-1" style="font-size:12.5px">
+        <tr><td style="width:110px" class="text-slate-400">用例标识</td><td><code>{{ c.code }}</code></td></tr>
+        <tr><td class="text-slate-400">用例名称</td><td>{{ c.name }}</td></tr>
+        <tr><td class="text-slate-400">用例说明</td><td>{{ c.desc|default:'-' }}</td></tr>
+        {% for end, spec in c.entries.items %}<tr><td class="text-slate-400">{% if end == 'pc' %}PC{% else %}WAP{% endif %} 入口</td><td><code>{{ spec }}</code></td></tr>{% endfor %}
+        <tr><td class="text-slate-400">站点档案</td><td>{% if c.checks.uses_site_profile %}<span class="ui-badge ui-badge-sky">站点档案驱动</span>{% else %}<span class="ui-badge ui-badge-amber">未接入站点档案</span>{% endif %}
+          {% if c.checks.hardcoded_hosts %}<span class="ui-badge ui-badge-red">硬编码域名: {{ c.checks.hardcoded_hosts|join:', ' }}</span>{% endif %}</td></tr>
+      </table>
+    </div>
+
+    {% if c.steps %}
+    <div class="mb-3">
+      <div class="fw-bold mb-1">② 步骤明细（{{ c.steps|length }} 步，扫描 spec 源码生成）</div>
+      <table class="ui-table table-striped mb-1" style="font-size:12.5px">
+        <tr><th style="width:52px">步骤</th><th style="width:52px">端</th><th>内容 / 预期</th></tr>
+        {% for s in c.steps %}
+        <tr><td><b>{{ s.id }}</b></td><td>{{ s.side|default:'-' }}</td><td>{{ s.name }}{% if s.expect %} <span class="text-slate-400">（预期：{{ s.expect }}）</span>{% endif %}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% else %}
+    <div class="text-muted mb-3">（该用例无 runStep 结构化步骤，步骤见源码 test 块）</div>
+    {% endif %}
+
+    {% if c.pages %}
+    <div class="mb-2">
+      <div class="fw-bold mb-1">③ 涉及页面（站点档案键 → 实际路径）</div>
+      {% for k, v in c.pages.items %}<span class="ui-badge ui-badge-slate border" title="站点档案键：{{ k }}"><code>{{ v }}</code></span> {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+
+  </div>
+  <div class="dlg-head d-flex justify-content-end gap-2" style="border-top:1px solid #dee2e6;border-bottom:none">
+    <a class="ui-btn ui-btn-sm" href="/campaigns/new/?scenario={{ c.code }}">发起测试</a>
+    {% if src == 'doc' %}<a class="ui-btn ui-btn-sm" href="/scenarios/{{ c.pk }}/">流程详情</a>{% endif %}
+    <button class="ui-btn ui-btn-sm" onclick="this.closest('dialog').close()">关闭</button>
+  </div>
+</dialog>

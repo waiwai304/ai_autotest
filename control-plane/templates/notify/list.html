@@ -1,0 +1,51 @@
+{% extends 'base.html' %}{% block title %}通知设置{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h4 class="mb-0">通知设置（Campaign 完成推送）</h4>
+  <div>
+    <a class="ui-btn ui-btn-primary ui-btn-sm" href="/notify/new/">新增渠道</a>
+  </div>
+</div>
+<div class="ui-summary mt-2 mb-3"><span class="ui-badge ui-badge-blue">Job 终态即推</span><span class="ui-badge ui-badge-slate">汇总推送</span><span>结果摘要 + 报告链接</span></div>
+
+<div class="ui-card mb-3"><div class="ui-card-head d-flex align-items-center">推送本站域名 <span class="ui-badge ui-badge-blue ms-2">推送链接前缀</span></div>
+<div class="ui-card-body py-2">
+  <form method="post" action="/notify/settings/" class="row g-2 align-items-center">{% csrf_token %}
+    <div class="col-12 col-md-8">
+      <input class="ui-input" name="base_url" value="{{ ns.base_url }}" placeholder="例：https://onebuy.example.com 或 http://192.168.1.10:3008（留空回退 PLATFORM_BASE_URL 环境变量）">
+    </div>
+    <div class="col-auto"><button class="ui-btn ui-btn-primary ui-btn-sm">保存</button></div>
+    <div class="col-12 ui-hint">推送内报告/详情链接的前缀——本机部署 127.0.0.1 他人打不开，请填<b class="text-slate-500">实际可访问地址</b>，保存即生效。</div>
+  </form>
+</div></div>
+
+<div class="ui-card"><div class="ui-card-body p-0">
+<table class="ui-table">
+<tr><th>渠道</th><th>Webhook 地址</th><th>触发事件</th><th>状态</th><th>最近发送</th><th>最近结果</th><th style="width:230px">操作</th></tr>
+{% for o in objects %}
+<tr>
+  <td><b>{{ o.name }}</b></td>
+  <td class="small text-truncate" style="max-width:280px" title="{{ o.url }}">{{ o.url }}</td>
+  <td>{% if o.events == 'job_all' %}<span class="ui-badge ui-badge-blue">每任务即推</span>{% elif o.events == 'job_failed' %}<span class="ui-badge ui-badge-amber">仅失败即推</span>{% else %}<span class="ui-badge ui-badge-slate">仅汇总</span>{% endif %}</td>
+  <td>{% if o.enabled %}<span class="ui-badge ui-badge-green">启用</span>{% else %}<span class="ui-badge ui-badge-slate">停用</span>{% endif %}</td>
+  <td class="text-[11.5px]">{% if o.last_sent_at %}{{ o.last_sent_at|date:'m-d H:i' }}{% else %}-{% endif %}</td>
+  <td class="text-[11.5px]">{% if o.last_status %}<span class="{% if o.last_status|slice:':2' == 'ok' %}text-success{% else %}text-danger{% endif %}" title="{{ o.last_status }}">{{ o.last_status|truncatechars:40 }}</span>{% else %}-{% endif %}</td>
+  <td class="text-nowrap">
+    <form method="post" action="/notify/{{ o.pk }}/test/" class="d-inline">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-sm" title="立即发送一条测试消息验证配置">测试</button></form>
+    <a class="ui-btn ui-btn-sm" href="/notify/{{ o.pk }}/edit/">编辑</a>
+    <form method="post" action="/notify/{{ o.pk }}/toggle/" class="d-inline">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-sm">{% if o.enabled %}停用{% else %}启用{% endif %}</button></form>
+    <form method="post" action="/notify/{{ o.pk }}/delete/" class="d-inline">{% csrf_token %}<button type="submit" class="ui-btn ui-btn-danger ui-btn-sm" onclick="return confirm('确定删除渠道「{{ o.name }}」？');">删除</button></form>
+  </td>
+</tr>
+{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">暂无通知渠道——新增一个 Webhook 渠道，测试完成即可收到推送</td></tr>{% endfor %}
+</table>
+</div></div>
+
+<details class="ui-fold mt-3"><summary>渠道配置说明（模板 / 触发粒度 / 推送时机 / 链接前缀）</summary><div class="ui-fold-body"><ul class="mb-0">
+    <li><b>请求体模板</b>：<code>{{ '{' }}{{ '{' }}CONTENT_JSON{{ '}' }}{{ '}' }}</code> 为内容 JSON 安全替换（推荐，自动转义引号/换行）；<code>{{ '{' }}{{ '{' }}content{{ '}' }}{{ '}' }}</code> 为裸文本替换（适合纯文本 body）。</li>
+    <li><b>触发粒度</b>：每任务即推（默认）= 每个测试任务一出结果立即推送，内容含任务 ID（JOB-xxxxxx-PC/WAP）、结果（通过/失败/已取消 + 步骤进度）、失败原因、HTML 报告链接；仅失败即推 = 通过的任务不打扰；仅汇总 = 全部任务结束后推一次 Campaign 汇总。</li>
+    <li><b>推送时机</b>：任务级=Job 终态即时（异步，不影响测试执行）；汇总级=报告生成后。发送失败自动记录在「最近结果」列。</li>
+    <li><b>链接前缀</b>：通知内详情/报告链接优先使用上方「推送本站域名」，未配置时回退 <code>PLATFORM_BASE_URL</code> 环境变量（默认 http://127.0.0.1:3008）。</li>
+  </ul>
+</div></details>
+{% endblock %}

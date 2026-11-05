@@ -1,0 +1,77 @@
+{% extends 'base.html' %}{% block title %}网站管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">网站管理</h4>
+  <a class="ui-btn ui-btn-primary ui-btn-sm" href="/sites/new/">新增网站</a>
+</div>
+{% if messages %}{% for m in messages %}<div class="alert {{ m.tags|default:'info' }}">{{ m.message }}</div>{% endfor %}{% endif %}
+<div class="ui-card"><div class="ui-card-body p-0">
+<table class="ui-table">
+<tr><th>权重</th><th>编码</th><th>名称</th><th>PC 前台</th><th>WAP</th><th>后台</th><th>路径档案</th><th>状态</th><th class="text-end">操作</th></tr>
+{% for s in objects %}
+<tr>
+  <td>
+    {% if s.weight %}
+    <button class="ui-badge ui-badge-blue border-0" style="cursor:pointer" title="权重 {{ s.weight }}（点击修改）——数值越大，执行中心里越靠前"
+            onclick="openWeight({{ s.pk }}, '{{ s.code|escapejs }}', {{ s.weight }})">{{ s.weight }}</button>
+    {% else %}
+    <button class="ui-badge ui-badge-slate border-0" style="cursor:pointer" title="未设权重（点击设置）——按创建时间排"
+            onclick="openWeight({{ s.pk }}, '{{ s.code|escapejs }}', 0)">未设</button>
+    {% endif %}
+  </td>
+  <td><a href="/sites/{{ s.pk }}/"><b>{{ s.code }}</b></a></td>
+  <td>{{ s.name }}</td>
+  <td class="text-[11.5px]">{{ s.pc_base_url|default:s.base_url|default:'-' }}</td>
+  <td class="text-[11.5px]">{{ s.wap_base_url|default:'-' }}</td>
+  <td class="text-[11.5px]">{{ s.boss_base_url|default:'-' }}</td>
+  <td><code class="text-[11.5px]">{{ s.profile_key }}</code></td>
+  <td>{% if s.enabled %}<span class="ui-badge ui-badge-green">启用</span>{% else %}<span class="ui-badge ui-badge-slate">停用</span>{% endif %}</td>
+  <td class="text-end">
+    <a class="ui-btn ui-btn-sm" href="/sites/{{ s.pk }}/edit/">编辑</a>
+    <form method="post" action="/sites/{{ s.pk }}/toggle/" class="d-inline">{% csrf_token %}
+      <button class="ui-btn ui-btn-sm">{% if s.enabled %}停用{% else %}启用{% endif %}</button>
+    </form>
+  </td>
+</tr>
+{% empty %}<tr><td colspan="9" class="text-center text-muted py-4">暂无网站，点击右上角「新增网站」创建</td></tr>{% endfor %}
+</table>
+</div></div>
+<details class="ui-fold mt-2 inline-block">
+  <summary>建站提示</summary>
+  <div class="ui-fold-body">同结构站点只需填三端域名（路径表自动复用「路径档案」）；发起测试时勾选网站即可，无需再手填域名覆盖。<br>权重：数值越大，在执行中心（发起测试）的网站列表中越靠前；未设权重（0）的按创建时间排列。</div>
+</details>
+
+<!-- 权重设置弹窗（2026-11-04 ian：权重越大执行中心显示越靠前，0=未设） -->
+<dialog class="flow-dlg" id="weightDlg" style="width:min(92vw,440px)">
+  <form method="post" action="" id="weightForm">
+    {% csrf_token %}
+    <div class="dlg-head">
+      <b>设置网站权重</b>
+      <button type="button" class="btn-close" onclick="document.getElementById('weightDlg').close()"></button>
+    </div>
+    <div class="dlg-body">
+      <div class="mb-2 small text-muted" id="weightSite"></div>
+      <input class="ui-input" type="number" name="weight" id="weightInput" min="0" max="9999" step="1" placeholder="0 ~ 9999（留空或 0 = 不设权重）">
+      <div class="ui-hint">排序规则：权重越大，执行中心网站列表越靠前；未设权重的按创建时间排列。</div>
+    </div>
+    <div class="p-3 pt-0 d-flex gap-2 justify-content-end">
+      <button type="button" class="ui-btn ui-btn-sm" onclick="document.getElementById('weightDlg').close()">取消</button>
+      <button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">保存权重</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+document.querySelectorAll('dialog.flow-dlg').forEach(function (dlg) {
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+});
+/* 权重弹窗：填 pk/code/weight 后打开（2026-11-04 ian） */
+function openWeight(pk, code, weight) {
+  document.getElementById('weightForm').action = '/sites/' + pk + '/weight/';
+  document.getElementById('weightSite').textContent = '网站编码：' + code + (weight ? '（当前权重 ' + weight + '）' : '（当前未设权重，按创建时间排）');
+  document.getElementById('weightInput').value = weight || '';
+  document.getElementById('weightDlg').showModal();
+  setTimeout(function () { document.getElementById('weightInput').focus(); }, 50);
+}
+</script>
+{% endblock %}

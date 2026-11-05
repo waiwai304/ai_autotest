@@ -1,0 +1,34 @@
+{% extends 'base.html' %}{% block title %}{{ obj.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">{{ obj.name }} <small class="text-slate-400">{{ obj.code }}</small>
+    {% if obj.enabled %}<span class="ui-badge ui-badge-green">启用</span>{% else %}<span class="ui-badge ui-badge-slate">停用</span>{% endif %}
+  </h4>
+  <div>
+    <a class="ui-btn ui-btn-primary ui-btn-sm" href="/sites/{{ obj.pk }}/edit/">编辑</a>
+    <a class="ui-btn ui-btn-sm" href="/sites/">← 列表</a>
+  </div>
+</div>
+<div class="ui-card"><div class="ui-card-body">
+<table class="ui-table mb-0">
+<tr><th style="width:160px">PC 前台</th><td><code>{{ obj.pc_base_url|default:'-' }}</code></td></tr>
+<tr><th>WAP 前台</th><td><code>{{ obj.wap_base_url|default:'-' }}</code></td></tr>
+<tr><th>管理后台</th><td><code>{{ obj.boss_base_url|default:'-' }}</code> <span class="text-slate-400 text-[11.5px]">（含安全入口段）</span></td></tr>
+<tr><th>测试账号（前台）</th><td><code>{{ obj.front_account|default:'未配置（回退全局 .env）' }}</code> {% if obj.front_password %}<span class="ui-badge ui-badge-green">密码已设置</span>{% else %}<span class="ui-badge ui-badge-slate">无密码</span>{% endif %}</td></tr>
+<tr><th>测试账号（后台）</th><td><code>{{ obj.boss_account|default:'未配置（回退全局 .env）' }}</code> {% if obj.boss_password %}<span class="ui-badge ui-badge-green">密码已设置</span>{% else %}<span class="ui-badge ui-badge-slate">无密码</span>{% endif %}</td></tr>
+<tr><th>AI 探索独立账号</th><td><code>{{ obj.explore_account|default:'未配置（复用前台测试账号）' }}</code> {% if obj.explore_password %}<span class="ui-badge ui-badge-green">密码已设置</span>{% endif %} <span class="text-slate-400 text-[11.5px]">（探索写操作与真实 Job 数据隔离）</span></td></tr>
+<tr><th>路径档案</th><td><code>{{ obj.profile_key }}</code> <span class="text-slate-400 text-[11.5px]">（config/sites.json，页面/接口路径表来源）</span></td></tr>
+<tr><th>Base URL / 白名单</th><td><code>{{ obj.base_url }}</code> / <code>{{ obj.allowed_host }}</code> <span class="text-slate-400 text-[11.5px]">（由 PC 前台自动派生）</span></td></tr>
+<tr><th>Adapter / 语言 / 设备</th><td>{{ obj.adapter_key }} / {{ obj.locales|join:', ' }} / {{ obj.devices|join:', ' }}</td></tr>
+<tr><th>并发 / 频率</th><td>{{ obj.max_concurrency }} / {{ obj.requests_per_minute }} rpm</td></tr>
+</table>
+</div></div>
+{% if versions %}
+<div class="ui-card mt-3"><div class="ui-card-head">变更历史</div><div class="ui-card-body py-2">
+<table class="ui-table mb-0">
+<tr><th>版本</th><th>配置</th><th>操作人</th><th>时间</th></tr>
+{% for v in versions %}<tr><td>v{{ v.version }}</td><td><code class="text-[11.5px]">{{ v.config }}</code></td><td>{{ v.created_by }}</td><td>{{ v.created_at|date:'m-d H:i' }}</td></tr>{% endfor %}
+</table>
+</div></div>
+{% endif %}
+{% endblock %}
