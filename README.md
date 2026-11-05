@@ -8,7 +8,7 @@
 
 ## 阅读说明与版本边界
 
-本文根据用户提供的 `README (2).md` 和 `OneBuy-Playwright黑盒自动化测试部署方案.md` 扩充，整理日期为 **2026-11-05**。
+本文根据用户提供的 `README (2).md` 和 `web-Playwright黑盒自动化测试部署方案.md` 扩充，整理日期为 **2026-11-05**。
 
 | 信息类型 | 本文处理方式 |
 |---|---|
@@ -112,7 +112,7 @@ AI 接口参数包括 `base_url`、`api_key` 和 `model`，原 README 描述为�
 5. 保存并发布用例，选择站点和终端发起 Campaign，进入报告中心打开对应 Job 报告。
 
 ```text
-在已配置的 OneBuy 演示站点上，以英文桌面端访问首页，
+在已配置的 web 演示站点上，以英文桌面端访问首页，
 确认搜索框可见且可输入，搜索“phone case”，
 确认结果区域加载完成且至少出现一个商品，打开首个在售商品，
 确认商品名称、图片和有效价格可见。
@@ -257,7 +257,7 @@ Campaign 表示一次测试批次；Job 表示该批次中的执行任务。实�
 
 ```text
 批次：DEMO-CAMPAIGN-001
-站点：onebuy-demo | 终端：PC | 语言：en | 币种：USD
+站点：web-demo | 终端：PC | 语言：en | 币种：USD
 用例：DEMO-SMOKE-001 | 用例版本：示例 v1
 结果：失败 | 通过检查点：3/5
 失败位置：步骤 04，打开商品详情
@@ -368,7 +368,7 @@ cd /opt/web-blackbox
 docker compose run --rm playwright-test
 
 # 覆盖容器内站点筛选变量时显式传入 -e
-docker compose run --rm -e TEST_SITE_IDS=onebuy-demo playwright-test
+docker compose run --rm -e TEST_SITE_IDS=web-demo playwright-test
 
 # 查看原生报告：在有依赖的独立执行器项目内运行
 npx playwright show-report output/html-report
