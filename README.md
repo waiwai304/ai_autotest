@@ -1,4 +1,4 @@
-<img width="1910" height="911" alt="image" src="https://github.com/user-attachments/assets/f6f11e00-1fd9-4fa0-9f0a-47168b106076" /># ai_autotest · AI 驱动的网站自动化测试中心
+# ai_autotest · AI 驱动的网站自动化测试中心
 
 > 用一句话描述测试目标，通过 AI 规划、真实浏览器探索和执行报告，把网站回归测试组织成可复用的用例。
 >
