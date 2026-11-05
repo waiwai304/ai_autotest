@@ -63,7 +63,7 @@ module.exports = defineConfig({
   },
   projects: [
     {
-      name: 'onebuy-desktop',
+      name: 'web-desktop',
       use: {
         baseURL,
         // 2026-10-12 终局定案：删除 devices['Desktop Chrome']——其伪装 UA（Windows Chrome）触发站点风控降级，
@@ -74,7 +74,7 @@ module.exports = defineConfig({
       },
     },
     {
-      name: 'onebuy-mobile',
+      name: 'web-mobile',
       use: {
         ...devices['iPhone 15'],
         baseURL,

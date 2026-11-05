@@ -3,14 +3,14 @@ import { sites } from '../src/config';
 
 // 桌面端用例仅在 Chromium(桌面 project) 运行；移动端由 tests/wap.spec.ts 覆盖
 test.skip(({ browserName }) => browserName !== 'chromium', '桌面端用例不在移动端(WebKit)运行');
-import { OneBuyPage, openReady } from '../src/pages/onebuy.page';
+import { ShopPage, openReady } from '../src/pages/shop.page';
 
 for (const site of sites) {
   test.describe(`${site.name} - 公共冒烟`, () => {
     test.use({ baseURL: site.baseURL });
 
     test('首页可以正常打开', async ({ page }) => {
-      const app = new OneBuyPage(page);
+      const app = new ShopPage(page);
       const response = await page.goto(`/${site.defaultLocale}`, {
         waitUntil: 'domcontentloaded',
       });
@@ -33,9 +33,9 @@ for (const site of sites) {
     test('首页展示有效商品', async ({ page }) => {
       await openReady(page, '/', site.defaultLocale);
 
-      const productLinks = page.locator(`a[href*="/detail/1688"]`);
+      const productLinks = page.locator(`a[href*="/detail/market"]`);
       await expect(productLinks.first()).toBeVisible({ timeout: site.productLoadTimeoutMs });
-      expect(await productLinks.count(), '没有发现 1688 商品').toBeGreaterThan(0);
+      expect(await productLinks.count(), '没有发现 供应链商品').toBeGreaterThan(0);
 
       const prices = await productLinks.locator('text=/\\$\\s*\\d/').allTextContents();
       expect(prices.length, '商品列表没有发现价格').toBeGreaterThan(0);

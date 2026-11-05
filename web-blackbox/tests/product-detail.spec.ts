@@ -3,15 +3,15 @@ import { sites } from '../src/config';
 
 // 桌面端用例仅在 Chromium(桌面 project) 运行；移动端由 tests/wap.spec.ts 覆盖
 test.skip(({ browserName }) => browserName !== 'chromium', '桌面端用例不在移动端(WebKit)运行');
-import { openReady } from '../src/pages/onebuy.page';
+import { openReady } from '../src/pages/shop.page';
 
-for (const site of sites.filter((item) => item.features.product1688)) {
-  test.describe(`${site.name} - 1688 商品详情`, () => {
+for (const site of sites.filter((item) => item.features.productMarket)) {
+  test.describe(`${site.name} - 供应链商品详情`, () => {
     test.use({ baseURL: site.baseURL });
 
-    test('可以解析有效的 1688 商品', async ({ page }) => {
-      const encoded = encodeURIComponent(site.testData.valid1688ProductUrl);
-      await page.goto(`/${site.defaultLocale}/detail/1688?url=${encoded}`, {
+    test('可以解析有效的 供应链商品', async ({ page }) => {
+      const encoded = encodeURIComponent(site.testData.validMarketProductUrl);
+      await page.goto(`/${site.defaultLocale}/detail/market?url=${encoded}`, {
         waitUntil: 'domcontentloaded',
       });
       await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});

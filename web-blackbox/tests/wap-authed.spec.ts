@@ -2,28 +2,28 @@ import { expect, test } from '../src/fixtures';
 import { sites } from '../src/config';
 import type { Page } from '@playwright/test';
 import { captureGetItem, standardSkuFlow } from './helpers/sku-standard';
-import { site, wapEntry, wapRoute, wapSiteBase, offer1688 } from './helpers/site';
+import { site, wapEntry, wapRoute, wapSiteBase, offerMarket } from './helpers/site';
 
 /**
  * WAP 登录态功能测试（串行执行）
  * 覆盖：登录、搜索、商品详情、加购、下单(到支付通道为止，不真实支付)、用户资料修改与还原
- * 账号来自 .env：ONEBUY_TEST_ACCOUNT / ONEBUY_TEST_PASSWORD
+ * 账号来自 .env：TEST_TEST_ACCOUNT / TEST_TEST_PASSWORD
  */
 
-const ACCOUNT = process.env.SITE_FRONT_ACCOUNT || process.env.ONEBUY_TEST_ACCOUNT || '';
-const PASSWORD = process.env.SITE_FRONT_PASSWORD || process.env.ONEBUY_TEST_PASSWORD || '';
+const ACCOUNT = process.env.SITE_FRONT_ACCOUNT || process.env.TEST_TEST_ACCOUNT || '';
+const PASSWORD = process.env.SITE_FRONT_PASSWORD || process.env.TEST_TEST_PASSWORD || '';
 const SEARCH_KEYWORD = process.env.WAP_SEARCH_KEYWORD || site.testData.searchKeywordWap || 'phone case';
 const DETAIL_IID = site.testData.numIidWapDetail || '';
 // 保持原双重编码语义（站点解析兼容）
 const DETAIL_HASH = DETAIL_IID
-  ? `${wapRoute('itemdc')}?num_iid=${DETAIL_IID}&url=${encodeURIComponent(encodeURIComponent(offer1688(DETAIL_IID)))}&tp=1688`
+  ? `${wapRoute('itemdc')}?num_iid=${DETAIL_IID}&url=${encodeURIComponent(encodeURIComponent(offerMarket(DETAIL_IID)))}&tp=market`
   : '';
 // 加购专用商品（站点方指定长期在架）：SKU 弹层每行规格自带数量步进器，MOQ 由页面提示给出
 const CART_ITEM_IID = site.testData.numIidWapCart || '';
-const CART_ITEM_HASH = `${wapRoute('itemdc')}?num_iid=${CART_ITEM_IID}&url=${encodeURIComponent(offer1688(CART_ITEM_IID))}&tp=1688`;
+const CART_ITEM_HASH = `${wapRoute('itemdc')}?num_iid=${CART_ITEM_IID}&url=${encodeURIComponent(offerMarket(CART_ITEM_IID))}&tp=market`;
 
 test.skip(({ browserName }) => browserName !== 'webkit', 'WAP 登录态用例仅在移动端(WebKit)运行');
-test.skip(!ACCOUNT || !PASSWORD, '未配置测试账号 ONEBUY_TEST_ACCOUNT/PASSWORD，跳过登录态测试');
+test.skip(!ACCOUNT || !PASSWORD, '未配置测试账号 TEST_TEST_ACCOUNT/PASSWORD，跳过登录态测试');
 test.skip(!DETAIL_IID || !CART_ITEM_IID, 'config/sites.json 缺少 testData.numIidWapDetail/numIidWapCart，跳过');
 
 async function openWap(page: Page, route: string, baseURL: string, settleMs = 3000) {

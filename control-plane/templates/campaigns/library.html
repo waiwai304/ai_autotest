@@ -11,7 +11,7 @@
 </div>
 <details class="ui-fold mt-2 mb-3 inline-block max-w-full">
   <summary>素材池机制说明</summary>
-  <div class="ui-fold-body">OneBuy 测试平台在执行测试时，用例会从这三个素材池中获取搜索词 / 搜索图片 / 商品链接：发起测试时可<b>勾选指定条目</b>，未勾选则按类型<b>随机抽取</b>（每类最多 3 条注入用例环境变量 LIB_KEYWORDS / LIB_IMAGES / LIB_LINKS）。池为空时用例回退站点档案默认配置，不影响现有流程。点击卡片可查看与修改；卡片池底部「+ 添加」可批量录入（每行一条）。</div>
+  <div class="ui-fold-body">自动化测试平台在执行测试时，用例会从这三个素材池中获取搜索词 / 搜索图片 / 商品链接：发起测试时可<b>勾选指定条目</b>，未勾选则按类型<b>随机抽取</b>（每类最多 3 条注入用例环境变量 LIB_KEYWORDS / LIB_IMAGES / LIB_LINKS）。池为空时用例回退站点档案默认配置，不影响现有流程。点击卡片可查看与修改；卡片池底部「+ 添加」可批量录入（每行一条）。</div>
 </details>
 
 {% if messages %}
@@ -145,7 +145,7 @@
       PH = {
         keyword: '每行一个搜索关键词，如：water bottle',
         image: '每行一个图片 URL（以图搜图素材）',
-        link: '每行一个商品链接，仅 1688 格式参与全链选品：https://detail.1688.com/offer/123456789.html 或纯编号'
+        link: '每行一个商品链接，仅供应链链接格式参与全链选品：https://detail.market.example.com/offer/123456789.html 或纯编号'
       };
   function openDlg(opts) {   // {mode:'edit'|'add', pk, kind, value, note, site, enabled}
     var isAdd = opts.mode === 'add';

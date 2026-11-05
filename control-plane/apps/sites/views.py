@@ -18,7 +18,7 @@ def _available_profiles() -> list:
 
 
 def _profile_options() -> list:
-    """可用站点档案 [(id, 名称, adapter)]；2026-11-04 ian：除 OneBuy 档案外增加 generic-web（任意官网）"""
+    """可用站点档案 [(id, 名称, adapter)]；2026-11-04 ian：除 商城档案外增加 generic-web（任意官网）"""
     import json as _json
     for p in ('/data/runner-config/sites.json', '/workspace/runner/config/sites.json'):
         try:
@@ -53,7 +53,7 @@ def _validate(payload: dict) -> dict:
         if avail and pk not in avail:
             hint = '；'.join(f'{i}（{n}）' for i, n, _ in opts)
             errors['profile_key'] = (f'档案 id「{pk}」不存在或未启用。可选：{hint}。'
-                                     'OneBuy 商城类站点填 onebuy-v2026；官网/企业站等非商城站点填 generic-web。')
+                                     '商城类站点填 shop-v1；官网/企业站等非商城站点填 generic-web。')
     return errors
 
 
@@ -81,9 +81,9 @@ def _apply_and_save(site: Site, payload: dict, request):
                 continue
             setattr(site, f, payload[f])
     host = urlparse(payload['pc_base_url']).hostname or ''
-    # 2026-11-04 ian：档案留空时按 adapter 自动落默认档案（官网类→generic-web，避免误用 OneBuy 路径表）
+    # 2026-11-04 ian：档案留空时按 adapter 自动落默认档案（官网类→generic-web，避免误用 商城路径表）
     if not (site.profile_key or '').strip():
-        site.profile_key = 'onebuy-v2026' if (site.adapter_key or 'onebuy') == 'onebuy' else 'generic-web'
+        site.profile_key = 'shop-v1' if (site.adapter_key or 'shop') == 'shop' else 'generic-web'
     site.base_url = payload['pc_base_url']
     site.allowed_host = host
     if not site.locales:

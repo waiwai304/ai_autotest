@@ -1,10 +1,10 @@
 {% extends "admin/base.html" %}
-{% block title %}{{ title }} | OneBuy 测试平台数据管理{% endblock %}
+{% block title %}{{ title }} | 自动化测试平台数据管理{% endblock %}
 
 {% block extrastyle %}
 {{ block.super }}
 <style>
-/* ===== Django Admin → vben-admin / antd v5 主题层（OneBuy 平台统一视觉）===== */
+/* ===== Django Admin → vben-admin / antd v5 主题层（平台统一视觉）===== */
 :root{
   --primary:#5e6ad2; --primary-fg:#fff; --secondary:#417690; --accent:#7d86cf;
   --body-fg:rgba(0,0,0,.88); --body-quiet-color:rgba(0,0,0,.45); --body-medium-color:rgba(0,0,0,.65);
@@ -100,7 +100,7 @@ html[data-theme="auto"], html[data-theme="dark"]{
 {% endblock %}
 
 {% block branding %}
-<h1 id="site-name"><a href="/admin/">OneBuy 数据管理</a><span class="vb-admin-badge">Django Admin</span></h1>
+<h1 id="site-name"><a href="/admin/">平台数据管理</a><span class="vb-admin-badge">Django Admin</span></h1>
 {% endblock %}
 
 {% block nav-global %}

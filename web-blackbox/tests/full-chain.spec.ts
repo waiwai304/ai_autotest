@@ -1,26 +1,26 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
 import type { Browser, Page, BrowserContext } from '@playwright/test';
-import { pcUrl, bossUrl, bossApi, site, offer1688, libPool, pick1688FromLib } from './helpers/site';
+import { pcUrl, bossUrl, bossApi, site, offerMarket, libPool, pickMarketFromLib } from './helpers/site';
 import { dismissOverlays } from './helpers/overlay';
 // 2026-10-16 ian：开屏广告/弹窗守卫接入——打开网站遇首页弹窗广告直接关闭再继续测试（JOB-000105 卡首页）
 
 /**
- * OneBuy 完整购物链路端到端测试（PC 前台 + 后台管理端，ian 2026-09-22 梳理的 13 步链路）
+ * 商城完整购物链路端到端测试（PC 前台 + 后台管理端，ian 2026-09-22 梳理的 13 步链路）
  *
  * 链路：前台下单支付 → 后台审核/已采购 → 发往中国仓(管理快递) → 快递签收 → 入库称重 → 商品拍照 →
  *       商品上架 → 前台提交运单 → 后台拣货+包裹审核 → 前台支付国际运费 → 后台出库 → 后台国际发货 → 前台确认收货
  *
  * 运行（真实交易：产生 1 笔商品订单 + 1 笔国际运费支付；规约：无需清理测试数据）：
  *   env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u all_proxy \
- *     WORKERS=1 npx playwright test tests/full-chain.spec.ts --project=onebuy-desktop
+ *     WORKERS=1 npx playwright test tests/full-chain.spec.ts --project=web-desktop
  *
  * 已知要点：
  * - 后台登录有图片验证码（/api/admin/v1/auth/captcha），用 ddddocr 识别页面渲染那张，失败自动重试
  * - 必须取页面上渲染的验证码 img（会话绑定），不可重新调接口（会拿到新图必错）
  * - 前台 PC 为 React 受控组件，输入必须用 fill()
  * - 快递单号/发货单号可随意填（ian 确认不影响状态流转），用 autotest+时间戳 保证唯一
- * - 后台账号在 .env：ONEBUY_BOSS_ACCOUNT / ONEBUY_BOSS_PASSWORD
+ * - 后台账号在 .env：TEST_BOSS_ACCOUNT / TEST_BOSS_PASSWORD
  */
 
 // 域名与页面路径全部来自 config/sites.json 站点档案（多站点复用，勿写死；env 可临时覆盖：
@@ -325,8 +325,8 @@ async function bossLogin(page: Page, logs: string[]): Promise<void> {
   await page.goto(`${bossUrl('login')}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.waitForTimeout(3000);
   const envTxt = readFileSync('.env', 'utf-8');
-  const acc = process.env.SITE_BOSS_ACCOUNT || /^ONEBUY_BOSS_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || 'admin';
-  const pwd = process.env.SITE_BOSS_PASSWORD || /^ONEBUY_BOSS_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '';
+  const acc = process.env.SITE_BOSS_ACCOUNT || /^TEST_BOSS_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || 'admin';
+  const pwd = process.env.SITE_BOSS_PASSWORD || /^TEST_BOSS_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '';
   const { execSync } = await import('child_process');
   for (let attempt = 1; attempt <= 8; attempt++) {
     // 2026-10-13 修复（JOB-87 实录）：已认证会话访问 login 会被重定向到 overview——
@@ -386,8 +386,8 @@ function fcSrc(): string {
 }
 
 /** 首页搜索框输入并回车（贴关键词或链接通用）。
- * 2026-10-13 vtest2026 实录：响应式双套 DOM（桌面导航+移动抽屉）产生两个同 placeholder 输入框，
- * 旧版 nth(1) 不可见时无检查回退 first()——主站 first() 恰好可见，vtest2026 first() 是隐藏移动版
+ * 2026-10-13 shop-v2 实录：响应式双套 DOM（桌面导航+移动抽屉）产生两个同 placeholder 输入框，
+ * 旧版 nth(1) 不可见时无检查回退 first()——主站 first() 恰好可见，shop-v2 first() 是隐藏移动版
  * → fill actionability 永不满足超时 15s（JOB-000091）。改 :visible 选择器按「当前可见」匹配，
  * 最终兜底原生设值+keydown（对隐藏框也生效，走站点自身提交逻辑）。 */
 async function searchBoxEnter(page: Page, text: string) {
@@ -445,7 +445,7 @@ async function collectDetailCandidates(page: Page, n = 5): Promise<string[]> {
 
 /** 按方向选品：完成站内搜索，返回候选详情 URL 列表。
  *  keyword = 关键词搜索→结果列表随机候选；link = 贴链接直达详情（已停在详情页，skipFirstGoto）；
- *  image = 下载图片素材→隐藏 file input 上传→imgid 结果列表随机候选；未配置方向 = 旧 1688 直连。 */
+ *  image = 下载图片素材→隐藏 file input 上传→imgid 结果列表随机候选；未配置方向 = 旧供应链直连。 */
 async function pickProduct(page: Page, logs: string[]): Promise<PickResult> {
   const mode = (process.env.FC_PICK_MODE || '').trim().toLowerCase();
   const items = fcItems();
@@ -468,7 +468,7 @@ async function pickProduct(page: Page, logs: string[]): Promise<PickResult> {
     return { mode, urls, skipFirstGoto: false, desc: `关键词「${kw}」`, searchUrl: page.url() };
   }
   if (mode === 'link') {
-    const pool = items.length ? items : libPool('LINKS', [offer1688(site.testData.numIidFullChain || '')]);
+    const pool = items.length ? items : libPool('LINKS', [offerMarket(site.testData.numIidFullChain || '')]);
     Object.assign(runConfig, { pickMode: 'link', pickModeLabel: '链接直达', pickSource: items.length ? fcSrc() : (process.env.LIB_LINKS ? `用例库·${process.env.LIB_LINKS_MODE === 'picked' ? '发起时勾选' : '随机抽取'}` : '站点档案默认'), pickItems: pool });
     const link = pool[Math.floor(Math.random() * pool.length)];
     logs.push(`选品方向=链接直达（素材: ${fcSrc()}）: ${link}`);
@@ -477,15 +477,15 @@ async function pickProduct(page: Page, logs: string[]): Promise<PickResult> {
     const lm = /(\d{6,})/.exec(link);
     expect(lm, `链接素材无法解析出商品 num_iid: ${link.slice(0, 80)}`).toBeTruthy();
     // 2026-10-19 修复（JOB-000111/112/115/116 事故根因）：按链接域名分发详情路由——
-    // 旧版把任何链接的数字 id 一律拼成 detail.1688.com/offer/<id>，taobao id 被错拼成
-    // 1688 offer → getItem 必败（"商品信息不完整/搜索失败"）。探针实锤（probe-detail-platform.ts）：
+    // 旧版把任何链接的数字 id 一律拼成 detail.market.example.com/offer/<id>，taobao id 被错拼成
+    // 供应链 offer → getItem 必败（"商品信息不完整/搜索失败"）。探针实锤（probe-detail-platform.ts）：
     // /detail/taobao?url=<原始taobao链接> 渲染+getItem code=1 ✓；/detail/weidian 404 ✗。
     if (/weidian\.com/.test(link)) {
-      throw new Error(`微店链接暂不支持 PC 全链直达（站点无 /detail/weidian 路由，探针 2026-10-19 实锤 404）: ${link.slice(0, 60)}——请换 1688/淘宝链接`);
+      throw new Error(`微店链接暂不支持 PC 全链直达（站点无 /detail/weidian 路由，探针 2026-10-19 实锤 404）: ${link.slice(0, 60)}——请换供应链/淘宝链接`);
     }
-    const plat = /item\.taobao\.com|tmall\.com/.test(link) ? 'taobao' : '1688';
-    const srcUrl = /https?:\/\//.test(link) ? link : offer1688(lm![1]);
-    const detailBase = plat === 'taobao' ? String(pcUrl('detail1688')).replace(/1688$/, 'taobao') : pcUrl('detail1688');
+    const plat = /item\.taobao\.com|tmall\.com/.test(link) ? 'taobao' : 'market';
+    const srcUrl = /https?:\/\//.test(link) ? link : offerMarket(lm![1]);
+    const detailBase = plat === 'taobao' ? String(pcUrl('detail_market')).replace(/market$/, 'taobao') : pcUrl('detail_market');
     const detailDirect = `${detailBase}?url=${encodeURIComponent(srcUrl)}`;
     logs.push(`链接选品完成（平台=${plat}，源=${srcUrl.slice(0, 60)}），详情 URL 已构造（导航交给候选循环）`);
     return { mode, urls: [detailDirect], skipFirstGoto: false, desc: `链接 ${link.slice(0, 60)}` };
@@ -526,17 +526,17 @@ async function pickProduct(page: Page, logs: string[]): Promise<PickResult> {
     logs.push(`图搜结果候选 ${urls.length} 个（随机排序逐个尝试）`);
     return { mode, urls, skipFirstGoto: false, desc: '图片搜索' };
   }
-  // 未配置方向 = 旧直连模式（站点档案 1688 编号；兼容 LIB_LINKS 勾选，仅认 1688 格式）
-  const pick = pick1688FromLib(site.testData.numIidFullChain || '');
+  // 未配置方向 = 旧直连模式（站点档案 供应链编号；兼容 LIB_LINKS 勾选，仅认供应链格式）
+  const pick = pickMarketFromLib(site.testData.numIidFullChain || '');
   const modeTxt = pick.source.startsWith('用例库') && process.env.LIB_LINKS_MODE
     ? `，${process.env.LIB_LINKS_MODE === 'picked' ? '发起时勾选' : '随机抽取'}` : '';
-  Object.assign(runConfig, { pickMode: 'legacy', pickModeLabel: '1688 固定商品直连', pickSource: pick.source + modeTxt, pickItems: [pick.iid] });
+  Object.assign(runConfig, { pickMode: 'legacy', pickModeLabel: '供应链固定商品直连', pickSource: pick.source + modeTxt, pickItems: [pick.iid] });
   logs.push(`选品: ${pick.iid}（来源: ${pick.source}${modeTxt}｜模式: 站点档案直连）`);
-  return { mode: 'legacy', urls: [`${pcUrl('detail1688')}?url=${encodeURIComponent(offer1688(pick.iid))}`], skipFirstGoto: false, desc: `选品 ${pick.iid}` };
+  return { mode: 'legacy', urls: [`${pcUrl('detail_market')}?url=${encodeURIComponent(offerMarket(pick.iid))}`], skipFirstGoto: false, desc: `选品 ${pick.iid}` };
 }
 
 // ---------- 用例 ----------
-test.describe('OneBuy 完整购物链路（PC 前台 + 后台）', () => {
+test.describe('商城完整购物链路（PC 前台 + 后台）', () => {
   // 2026-10-12 ian：全链是真实交易链路，spec 级重试=整链从头再来（纯冗余，当天实录 attempt2/3 无一翻盘）。
   // 失败快速终态，由 3008 平台 Job 级手动 retry 承担（带 401 重登等自愈能力）。
   test.describe.configure({ retries: 0 });
@@ -546,12 +546,12 @@ test.describe('OneBuy 完整购物链路（PC 前台 + 后台）', () => {
     test.setTimeout(45 * 60_000);
 
     const envTxt = readFileSync('.env', 'utf-8');
-    const ACCOUNT = process.env.SITE_FRONT_ACCOUNT || /^ONEBUY_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '';
-    const PASSWORD = process.env.SITE_FRONT_PASSWORD || /^ONEBUY_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '';
+    const ACCOUNT = process.env.SITE_FRONT_ACCOUNT || /^TEST_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '';
+    const PASSWORD = process.env.SITE_FRONT_PASSWORD || /^TEST_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '';
     test.skip(!ACCOUNT || !PASSWORD, '未配置测试账号');
     FRONT_CREDS = { account: ACCOUNT, password: PASSWORD }; // 登录态掉线守卫复用（2026-10-14）
     runConfig.frontAccount = ACCOUNT;
-    runConfig.bossAccount = process.env.SITE_BOSS_ACCOUNT || /^ONEBUY_BOSS_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || 'admin';
+    runConfig.bossAccount = process.env.SITE_BOSS_ACCOUNT || /^TEST_BOSS_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || 'admin';
 
     const userCtx = await browser.newContext({ locale: 'zh-CN', viewport: { width: 1440, height: 900 } });
     const user = await userCtx.newPage();
@@ -580,12 +580,12 @@ test.describe('OneBuy 完整购物链路（PC 前台 + 后台）', () => {
     await runStep('F2', '前台按选品方向下单并余额支付', '前台', user, async (logs) => {
       // 选品方向（2026-10-09 ian）：FC_PICK_MODE = keyword|link|image 驱动站内搜索选品，
       // 素材 FC_PICK_ITEMS（发起勾选/用例库随机/手动填写，由平台 runner 注入）；
-      // keyword/image = 搜索结果列表随机候选逐个尝试；link = 贴链接直达详情；未配置 = 旧 1688 直连。
+      // keyword/image = 搜索结果列表随机候选逐个尝试；link = 贴链接直达详情；未配置 = 旧供应链直连。
       let pick = await pickProduct(user, logs);
       // 2026-10-12 二分旁路（FC_DEBUG_PROBE=1）：丢弃 pickProduct 结果，用探针验证过的硬编码路径直连
       // 若旁路成功而正式路径失败 → pickProduct 是毒药；若旁路也失败 → F1/login/env 层差异
       if (process.env.FC_DEBUG_PROBE === '1' || process.env.TV_FC_DEBUG_PROBE === '1') {
-        pick = { mode: 'debug', urls: [`${pcUrl('detail1688')}?url=${encodeURIComponent(offer1688('982345010398'))}`], skipFirstGoto: false, desc: 'DEBUG 直连 982345010398' };
+        pick = { mode: 'debug', urls: [`${pcUrl('detail_market')}?url=${encodeURIComponent(offerMarket('982345010398'))}`], skipFirstGoto: false, desc: 'DEBUG 直连 982345010398' };
         logs.push('【DEBUG 旁路】跳过 pickProduct，硬编码单候选直连');
       }
       // 2026-10-12：getItem 业务码监听——上游 item-not-found（error_code 2000，HTTP 仍 200）时详情页只渲染
@@ -629,11 +629,11 @@ test.describe('OneBuy 完整购物链路（PC 前台 + 后台）', () => {
             await user.goto(detailUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
           }
           await dismissOverlays(user, logs); // 详情页优惠券/活动弹窗守卫（防挡 CTA 与价格区）
-          // 2026-10-09 ian：1688 上游限流/风控时，站点把详情请求降级 302 → /selfservice（手工填单页，
+          // 2026-10-09 ian：供应链上游限流/风控时，站点把详情请求降级 302 → /selfservice（手工填单页，
           // bodyLen~365 空壳）。识别后立即换下一候选，不浪费 reload 自愈次数（JOB-000079 15 连挂实录）。
           if (/\/selfservice/.test(user.url())) {
-            lastDiag = '详情页被站点降级到 /selfservice 手工填单（1688 上游商品拉取失败/限流，非用例问题）';
-            logs.push(`候选${ci + 1} 被降级到手工填单页（1688 上游拉取失败/限流）→ 立即换下一候选`);
+            lastDiag = '详情页被站点降级到 /selfservice 手工填单（供应链上游商品拉取失败/限流，非用例问题）';
+            logs.push(`候选${ci + 1} 被降级到手工填单页（供应链上游拉取失败/限流）→ 立即换下一候选`);
             break; // 跳出 attempt 循环换候选
           }
           // 2026-10-12 修复（JOB-000084 三轮15连挂根因）：详情页 SPA 渲染实际需要 10s+，
@@ -665,7 +665,7 @@ test.describe('OneBuy 完整购物链路（PC 前台 + 后台）', () => {
             if (info.symPrice && info.hasBtn) { rendered = true; traj.push(`就绪t=${(pi + 1) * 2}s`); break; }
           }
           if (/\/selfservice/.test(user.url())) {
-            lastDiag = '详情页被站点降级到 /selfservice 手工填单（1688 上游商品拉取失败/限流，非用例问题）';
+            lastDiag = '详情页被站点降级到 /selfservice 手工填单（供应链上游商品拉取失败/限流，非用例问题）';
             logs.push(`候选${ci + 1} 被降级到手工填单页（前端路由跳转）→ 立即换下一候选`);
             break;
           }
@@ -940,7 +940,7 @@ test.describe('OneBuy 完整购物链路（PC 前台 + 后台）', () => {
         logs.push('归属校验未捕获订单行响应（宽松放行并留痕）');
       }
       // 监听已采购接口结果（failed_count>0 = 重复操作被拒）
-      // 2026-10-16 幂等容错（JOB-000107 根因）：spanbuy 等站点部分订单（微店代购/链接直连）支付后
+      // 2026-10-16 幂等容错（JOB-000107 根因）：spanbuy 等站点部分订单（微店渠道/链接直连）支付后
       // 商品自动流转到「已采购」(status 30)，再点手工采购 = 30→30 被拒（"状态流转不合法，只能流转到相邻状态"），
       // success_count=0——此时 failed_items 全部 old_status==new_status==30 应视为「已是目标状态」幂等通过。
       let purchaseResp: any = null;

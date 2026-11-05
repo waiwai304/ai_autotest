@@ -6,7 +6,7 @@ class Site(models.Model):
     name = models.CharField(max_length=200)
     code = models.SlugField(unique=True)
     base_url = models.URLField()
-    adapter_key = models.CharField(max_length=100, default='onebuy')
+    adapter_key = models.CharField(max_length=100, default='shop')
     enabled = models.BooleanField(default=True)
     # 2026-11-04 ian：展示权重，0=未设置（执行中心网站列表按权重降序，同权重按创建时间旧→新/代码）
     weight = models.PositiveSmallIntegerField(default=0, help_text='权重越大，执行中心里越靠前；0=未设置')
@@ -20,7 +20,7 @@ class Site(models.Model):
     pc_base_url = models.URLField(blank=True, default='', help_text='PC 前台域名')
     wap_base_url = models.URLField(blank=True, default='', help_text='WAP 前台域名')
     boss_base_url = models.URLField(blank=True, default='', help_text='后台完整入口（域名+安全入口段）')
-    profile_key = models.CharField(max_length=100, default='onebuy-v2026', help_text='复用的站点档案 id（config/sites.json）')
+    profile_key = models.CharField(max_length=100, default='shop-v1', help_text='复用的站点档案 id（config/sites.json）')
     # 站点测试账号（2026-09-24 ian：每站可配自己的前台/后台账密，测试遇到登录自动使用）
     front_account = models.CharField(max_length=200, blank=True, default='', help_text='前台测试账号')
     front_password = models.CharField(max_length=200, blank=True, default='', help_text='前台测试密码')

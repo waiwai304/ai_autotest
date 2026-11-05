@@ -1,5 +1,5 @@
 /**
- * ⚙️ 自动生成用例·真实执行版（OneBuy 测试平台 /scenarios/cases/create/ → doc_actions.py 自动扩充）
+ * ⚙️ 自动生成用例·真实执行版（自动化测试平台 /scenarios/cases/create/ → doc_actions.py 自动扩充）
  * 用例：addcart-check · 商品加购功能检查
  * 说明：检查商品详情页加购功能是否正常
  * 端：pc ｜ 需要登录：是 ｜ 含写操作：否

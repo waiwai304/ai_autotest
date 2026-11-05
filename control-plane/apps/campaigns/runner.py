@@ -13,7 +13,7 @@ VAR_ENV_ALIAS = {'keyword': 'WAP_KEYWORD', 'wap_keyword': 'WAP_KEYWORD'}
 # 断点续跑（2026-10-13）：白名单 key 不加 TV_ 前缀、原样注入 env（spec 直接读 process.env.FC_RESUME_FROM）
 VAR_ENV_PASSTHROUGH = {'FC_RESUME_FROM', 'FC_CURRENCY', 'FC_POLL_SEC'}
 # 宿主 web-blackbox 根 → runner 容器内挂载路径（值若是宿主路径，注入前翻译为容器路径，双保险）
-VAR_PATH_HOST_PREFIX = '/mnt500/www/wwwroot/onebuy_ceshi/web-blackbox'
+VAR_PATH_HOST_PREFIX = '/opt/ai_autotest/web-blackbox'
 VAR_PATH_CONTAINER_PREFIX = '/workspace/runner'
 # 步骤总数预估（scenario_code × end → 预计步骤数；未知则进度只显示已进行步数不显示百分比）
 STEP_TOTAL_HINT = {
@@ -75,7 +75,7 @@ def _build_env(job, m, run_id, end) -> dict:
         env['SITE_BOSS_BASE_URL'] = base
         if entry:
             env['SITE_BOSS_ENTRY'] = entry
-    # 同结构站点复用档案路径表（vtest2026 等：code ≠ 档案 id 时以 profile 为准）
+    # 同结构站点复用档案路径表（shop-v2 等：code ≠ 档案 id 时以 profile 为准）
     if site.get('profile'):
         env['TEST_SITE_ID'] = site['profile']
         env['TEST_SITE_IDS'] = site['profile']
@@ -142,7 +142,7 @@ def _build_env(job, m, run_id, end) -> dict:
     except Exception:
         pass  # 库注入失败不阻断执行（用例回退站点档案默认素材）
     # 全链选品方向（2026-10-09 ian：关键词/链接/图片三方向，来源=用例库/手动填写）
-    # spec 侧读 FC_PICK_MODE + FC_PICK_ITEMS 驱动 F2 选品；未配置=旧 1688 编号直连（兼容存量 Job 重跑）
+    # spec 侧读 FC_PICK_MODE + FC_PICK_ITEMS 驱动 F2 选品；未配置=旧供应链编号直连（兼容存量 Job 重跑）
     try:
         pick = (job.campaign.plan or {}).get('pick') or {}
         if pick.get('mode') in ('keyword', 'link', 'image'):
@@ -216,7 +216,7 @@ def _build_cmd(spec, end) -> list:
     """scripts/ 开头 = tsx 脚本（如 WAP 全链），tests/ 开头 = playwright spec 按端选 project"""
     if spec.startswith('scripts/'):
         return ['npx', 'tsx', spec]
-    project = 'onebuy-mobile' if end == 'wap' else 'onebuy-desktop'
+    project = 'web-mobile' if end == 'wap' else 'web-desktop'
     return ['npx', 'playwright', 'test', spec, f'--project={project}']
 
 def _require_html(run_id: str, kind: str, gen_log: str) -> tuple[str | None, str]:

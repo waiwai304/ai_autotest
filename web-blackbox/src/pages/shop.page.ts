@@ -23,7 +23,7 @@ export async function openReady(page: Page, route: string, locale = 'en', settle
   await page.waitForTimeout(settleMs);
 }
 
-export class OneBuyPage {
+export class ShopPage {
   constructor(private readonly page: Page) {}
 
   async openHome(locale = 'en') {

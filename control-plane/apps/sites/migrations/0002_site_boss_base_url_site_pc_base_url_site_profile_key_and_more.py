@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='site',
             name='profile_key',
-            field=models.CharField(default='onebuy-v2026', help_text='复用的站点档案 id（config/sites.json）', max_length=100),
+            field=models.CharField(default='shop-v1', help_text='复用的站点档案 id（config/sites.json）', max_length=100),
         ),
         migrations.AddField(
             model_name='site',

@@ -12,46 +12,46 @@
     <div class="row g-3">
       <div class="col-md-6">
         <label class="ui-label">网站名称 <span class="text-danger">*</span></label>
-        <input name="name" class="ui-input" value="{{ form.name|default:'' }}" placeholder="如 OneBuy vtest2026" required>
+        <input name="name" class="ui-input" value="{{ form.name|default:'' }}" placeholder="如 My Shop" required>
       </div>
       <div class="col-md-6">
         <label class="ui-label">编码（slug，唯一）<span class="text-danger">*</span></label>
-        <input name="code" class="ui-input" value="{{ form.code|default:'' }}" placeholder="如 vtest2026" pattern="[a-z0-9-]+" required>
+        <input name="code" class="ui-input" value="{{ form.code|default:'' }}" placeholder="如 shop-v2" pattern="[a-z0-9-]+" required>
       </div>
       <div class="col-12"><hr class="my-1"><div class="text-muted small mb-2">各端域名（同结构站点：路径表复用下方「站点档案」，域名自动覆盖生效）</div></div>
       <div class="col-md-4">
         <label class="ui-label">PC 前台 <span class="text-danger">*</span></label>
-        <input name="pc_base_url" class="ui-input" value="{{ form.pc_base_url|default:'' }}" placeholder="https://vtest2026.example.com" required>
+        <input name="pc_base_url" class="ui-input" value="{{ form.pc_base_url|default:'' }}" placeholder="https://shop-v2.example.com" required>
         <div class="ui-hint small">按原样使用（页面路径 /zh-cn/… 由站点档案提供，不在此填）。</div>
         {% if errors.pc_base_url %}<div class="text-danger small mt-1">{{ errors.pc_base_url }}</div>{% endif %}
       </div>
       <div class="col-md-4">
         <label class="ui-label">WAP 前台 <span class="text-danger">*</span> <span class="text-slate-400 text-[11.5px]">（按原样使用，请填完整入口路径）</span></label>
-        <input name="wap_base_url" class="ui-input" value="{{ form.wap_base_url|default:'' }}" placeholder="https://vtest2026.example.com/wap" required>
+        <input name="wap_base_url" class="ui-input" value="{{ form.wap_base_url|default:'' }}" placeholder="https://shop-v2.example.com/wap" required>
         {% if errors.wap_base_url %}<div class="text-danger small mt-1">{{ errors.wap_base_url }}</div>{% endif %}
         <div class="ui-hint small">测试直接使用此处填写的网址 + hash 路由（不自动拼接 /wap）。WAP 在 /wap 路径下就填到 /wap。</div>
       </div>
       <div class="col-md-4">
         <label class="ui-label">管理后台（含安全入口段）</label>
-        <input name="boss_base_url" class="ui-input" value="{{ form.boss_base_url|default:'' }}" placeholder="https://boss.vtest2026.example.com/xDDQtbeo">
+        <input name="boss_base_url" class="ui-input" value="{{ form.boss_base_url|default:'' }}" placeholder="https://boss.shop-v2.example.com/xDDQtbeo">
         {% if errors.boss_base_url %}<div class="text-danger small mt-1">{{ errors.boss_base_url }}</div>{% endif %}
       </div>
       <div class="col-md-4">
         <label class="ui-label">站点类别（路径档案）</label>
         <select name="profile_key" class="ui-input">
           {% for pid, pname, padapter in profiles %}
-          <option value="{{ pid }}" {% if form.profile_key == pid or not form.profile_key and pid == 'onebuy-v2026' %}selected{% endif %}>{{ pname }}（{{ pid }}）</option>
+          <option value="{{ pid }}" {% if form.profile_key == pid or not form.profile_key and pid == 'shop-v1' %}selected{% endif %}>{{ pname }}（{{ pid }}）</option>
           {% endfor %}
           {% if form.profile_key and form.profile_key not in profile_ids %}<option value="{{ form.profile_key }}" selected>{{ form.profile_key }}（自定义/未在档案表中）</option>{% endif %}
         </select>
         <div class="text-muted small mt-1">
-          <b>onebuy-v2026</b>：OneBuy 商城结构站点（复用全套页面路径 / 13 步全链路）；<br>
+          <b>shop-v1</b>：商城结构站点（复用全套页面路径 / 13 步全链路）；<br>
           <b>generic-web</b>：官网 / 企业站 / 任意非商城站点（通用冒烟：能打开、有内容、无严重前端错误）。
         </div>
       </div>
       <div class="col-md-4">
         <label class="ui-label">Adapter</label>
-        <input name="adapter_key" class="ui-input" value="{{ form.adapter_key|default:'onebuy' }}">
+        <input name="adapter_key" class="ui-input" value="{{ form.adapter_key|default:'shop' }}">
       </div>
       <div class="col-md-2">
         <label class="ui-label">并发</label>
@@ -69,7 +69,7 @@
       <div class="col-12"><hr class="my-1"><div class="text-muted small mb-2">测试账号（测试执行遇到登录时自动使用；不填则回退全局 .env 账号）</div></div>
       <div class="col-md-3">
         <label class="ui-label">前台账号</label>
-        <input name="front_account" class="ui-input" value="{{ form.front_account|default:'' }}" placeholder="如 ian2564039292@qq.com">
+        <input name="front_account" class="ui-input" value="{{ form.front_account|default:'' }}" placeholder="如 test@example.com">
       </div>
       <div class="col-md-3">
         <label class="ui-label">前台密码</label>

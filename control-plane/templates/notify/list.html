@@ -12,7 +12,7 @@
 <div class="ui-card-body py-2">
   <form method="post" action="/notify/settings/" class="row g-2 align-items-center">{% csrf_token %}
     <div class="col-12 col-md-8">
-      <input class="ui-input" name="base_url" value="{{ ns.base_url }}" placeholder="例：https://onebuy.example.com 或 http://192.168.1.10:3008（留空回退 PLATFORM_BASE_URL 环境变量）">
+      <input class="ui-input" name="base_url" value="{{ ns.base_url }}" placeholder="例：https://autotest.example.com 或 http://192.168.1.10:3008（留空回退 PLATFORM_BASE_URL 环境变量）">
     </div>
     <div class="col-auto"><button class="ui-btn ui-btn-primary ui-btn-sm">保存</button></div>
     <div class="col-12 ui-hint">推送内报告/详情链接的前缀——本机部署 127.0.0.1 他人打不开，请填<b class="text-slate-500">实际可访问地址</b>，保存即生效。</div>

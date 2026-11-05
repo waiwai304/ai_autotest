@@ -2,10 +2,10 @@ import { expect, test } from '../src/fixtures';
 import { sites } from '../src/config';
 import type { Page } from '@playwright/test';
 import { captureGetItem, standardSkuFlow } from './helpers/sku-standard';
-import { site, wapEntry, wapRoute, wapSiteBase, offer1688, SET_CURRENCY_USD } from './helpers/site';
+import { site, wapEntry, wapRoute, wapSiteBase, offerMarket, SET_CURRENCY_USD } from './helpers/site';
 
 /**
- * OneBuy WAP 完整购物支付流程（真实交易）
+ * Shop WAP 完整购物支付流程（真实交易）
  * 登录 → 商品详情(选SKU+数量) → 加购 → 购物车全选结算 → 确认订单(勾选协议+Submit) → 余额支付 → 支付成功
  *
  * 前提（站点方配合项）：
@@ -21,14 +21,14 @@ import { site, wapEntry, wapRoute, wapSiteBase, offer1688, SET_CURRENCY_USD } fr
  * - 全程不要求收货地址
  */
 
-const ACCOUNT = process.env.SITE_FRONT_ACCOUNT || process.env.ONEBUY_TEST_ACCOUNT || '';
-const PASSWORD = process.env.SITE_FRONT_PASSWORD || process.env.ONEBUY_TEST_PASSWORD || '';
+const ACCOUNT = process.env.SITE_FRONT_ACCOUNT || process.env.TEST_TEST_ACCOUNT || '';
+const PASSWORD = process.env.SITE_FRONT_PASSWORD || process.env.TEST_TEST_PASSWORD || '';
 const NUM_IID = process.env.WAP_NUM_IID || site.testData.numIidWapCart || '';
-const OFFER_URL = offer1688(NUM_IID);
-const DETAIL_HASH = `${wapRoute('itemdc')}?num_iid=${NUM_IID}&url=${encodeURIComponent(OFFER_URL)}&tp=1688`;
+const OFFER_URL = offerMarket(NUM_IID);
+const DETAIL_HASH = `${wapRoute('itemdc')}?num_iid=${NUM_IID}&url=${encodeURIComponent(OFFER_URL)}&tp=market`;
 
 test.skip(({ browserName }) => browserName !== 'webkit', 'WAP 完整购物流程仅在移动端(WebKit)运行');
-test.skip(!ACCOUNT || !PASSWORD, '未配置测试账号 ONEBUY_TEST_ACCOUNT/PASSWORD，跳过');
+test.skip(!ACCOUNT || !PASSWORD, '未配置测试账号 TEST_TEST_ACCOUNT/PASSWORD，跳过');
 test.skip(!NUM_IID, 'config/sites.json 缺少 testData.numIidWapCart，跳过');
 
 async function openWap(page: Page, route: string, baseURL: string, settleMs = 3000) {
@@ -99,7 +99,7 @@ for (const site of sites) {
 
       // S2 打开 SKU 弹层 → 标准打法选规格+数量 → 加购（2026-09-22 重写）
       // 旧版以视觉断言判定（数量框 toBeVisible / totalInfo 金额 toHaveText）——BUG-20260921-01 渲染层不刷新时必误报，已废弃。
-      // 标准打法：1688 源默认规格+自动 MOQ 填数；tglobal 源 getItem 数据驱动选有库存 SKU；成功判定 = cart/add 成功 + added to cart 弹窗
+      // 标准打法：供应链源默认规格+自动 MOQ 填数；tglobal 源 getItem 数据驱动选有库存 SKU；成功判定 = cart/add 成功 + added to cart 弹窗
       const addCart = await standardSkuFlow(page, { getItem, action: 'addcart' });
       expect(
         addCart.cartAdded || addCart.cartAddSeen,

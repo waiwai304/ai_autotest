@@ -86,7 +86,7 @@ for (const site of sites) {
       expect(numberInputs, '估算表单数字输入框不足（应为重量+体积+长宽高共5个）').toBeGreaterThanOrEqual(5);
     });
 
-    test('WAP 未登录访问代购页安全跳转登录', async ({ page }) => {
+    test('WAP 未登录访问受保护页面安全跳转登录', async ({ page }) => {
       await openWap(page, wapRoute('shipforme'), wapSiteBase);
 
       expect(page.url(), '未登录访问受保护页面未跳转登录').toContain(wapRoute('login'));

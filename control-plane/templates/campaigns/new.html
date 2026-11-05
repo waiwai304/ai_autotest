@@ -221,7 +221,7 @@
       <div class="col-auto form-check form-check-inline"><input class="ui-check" type="radio" name="pick_source" value="manual" id="psManual"><label class="form-check-label" for="psManual">手动填写（每行一条，优先生效）</label></div>
     </div>
     <textarea name="pick_manual" id="pickManual" class="ui-input d-none" rows="3" placeholder="每行一个搜索关键词"></textarea>
-    <details class="ui-fold mt-1"><summary>三种选品方向规则</summary><div class="ui-fold-body">关键词/图片方向 = 站内搜索结果列表<b>随机选商品</b>进详情下单；链接方向 = 搜索框贴商品链接<b>直达详情</b>（1688 / 淘宝 / 微店均支持）。不配置方向时全链沿用旧方式（站点档案 1688 编号直连，仅认 1688 格式）。</div></details>
+    <details class="ui-fold mt-1"><summary>三种选品方向规则</summary><div class="ui-fold-body">关键词/图片方向 = 站内搜索结果列表<b>随机选商品</b>进详情下单；链接方向 = 搜索框贴商品链接<b>直达详情</b>（供应链 / 淘宝 / 微店均支持）。不配置方向时全链沿用旧方式（站点档案供应链编号直连，仅认供应链格式）。</div></details>
   </div>
 </div>
 
@@ -241,7 +241,7 @@
       <div class="col-12 col-xl-4">
         <div class="border rounded p-2 h-100">
           <div class="small fw-bold mb-1">{{ label }}（启用 {{ lib_counts_enabled|get_item:k }} 条，随机 {{ lib_counts_enabled|get_item:k|default:0 }}）</div>
-          {% if k == 'link' %}<details class="ui-fold mb-1"><summary>链接格式说明</summary><div class="ui-fold-body">「链接搜索」方向支持 1688/淘宝/微店等任意商品链接；仅旧直连模式（未配置选品方向）要求 1688 offer 链接或纯编号。</div></details>{% endif %}
+          {% if k == 'link' %}<details class="ui-fold mb-1"><summary>链接格式说明</summary><div class="ui-fold-body">「链接搜索」方向支持 供应链/淘宝/微店等任意商品链接；仅旧直连模式（未配置选品方向）要求 供应链 offer 链接或纯编号。</div></details>{% endif %}
           {% if k == 'keyword' %}<div class="text-muted small mb-1">关键词对含搜索步骤的用例生效（加购/购物车/收藏/WAP全链/全链-关键词方向）。</div>{% endif %}
           <div style="max-height:200px;overflow:auto">
             {% for it in lib_groups|get_item:k %}
@@ -332,7 +332,7 @@ function refreshPickCard() {
   var ta = document.getElementById('pickManual');
   ta.classList.toggle('d-none', !manual);
   ta.placeholder = mode === 'keyword' ? '每行一个搜索关键词，如：蓝牙耳机'
-    : mode === 'link' ? '每行一个商品链接（1688/淘宝/微店），如：https://item.taobao.com/item.htm?id=…'
+    : mode === 'link' ? '每行一个商品链接（供应链/淘宝/微店），如：https://item.taobao.com/item.htm?id=…'
     : '每行一个图片 URL（以图搜图素材），如：https://cdn.example.com/shoes.jpg';
 }
 document.querySelectorAll('.sc-check').forEach(function (cb) { cb.addEventListener('change', refreshPickCard); });

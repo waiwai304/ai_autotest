@@ -51,7 +51,7 @@ def notify_settings_save(request):
     if request.method == 'POST':
         base = (request.POST.get('base_url') or '').strip().rstrip('/')
         if base and not base.startswith(('http://', 'https://')):
-            messages.error(request, '推送本站域名必须以 http(s):// 开头（如 https://onebuy.example.com）。')
+            messages.error(request, '推送本站域名必须以 http(s):// 开头（如 https://autotest.example.com）。')
             return redirect('notify_list')
         obj = NotifySetting.objects.first() or NotifySetting()
         obj.base_url = base
@@ -110,7 +110,7 @@ def notify_test(request, pk):
     from django.utils import timezone
     obj = get_object_or_404(NotifyChannel, pk=pk)
     if request.method == 'POST':
-        status = _send_channel(obj, '[OneBuy 测试平台] 通知渠道测试：配置正确，本条为手动测试消息。')
+        status = _send_channel(obj, '[自动化测试平台] 通知渠道测试：配置正确，本条为手动测试消息。')
         NotifyChannel.objects.filter(pk=obj.pk).update(last_status=status, last_sent_at=timezone.now())
         if status.startswith('ok:'):
             messages.success(request, f'测试消息发送成功（HTTP {status[3:]}）。')

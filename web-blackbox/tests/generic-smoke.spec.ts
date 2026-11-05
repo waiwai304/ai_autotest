@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 /**
  * 通用网站冒烟（2026-11-04 ian）
- * 适用：任意官网 / 企业站 / 非 OneBuy 结构的站点（站点档案 generic-web）。
- * 不依赖 OneBuy 的商品、导航、接口约定，只做「能打开、有内容、无严重前端错误」的基础可用性校验。
+ * 适用：任意官网 / 企业站 / 非商城结构的站点（站点档案 generic-web）。
+ * 不依赖 商城站点的商品、导航、接口约定，只做「能打开、有内容、无严重前端错误」的基础可用性校验。
  * 站点域名来自平台注入：SITE_PC_BASE_URL > BASE_URL > playwright.config baseURL。
  */
 
@@ -77,7 +77,7 @@ test.describe('通用网站冒烟', () => {
     const ignored = [/favicon/i, /third[- ]party cookie/i, /ERR_BLOCKED_BY_CLIENT/i, /net::ERR_ABORTED/i];
     const uniq = (arr: string[]) => Array.from(new Set(arr));
     // 2026-11-04 ian：区分「真实 JS 错误」与「第三方资源 403/404」——后者浏览器只给一句
-    // "Failed to load resource: 403" 不带 URL，重复几十条会误杀（aiyueju.cn 15 条实录），
+    // "Failed to load resource: 403" 不带 URL，重复几十条会误杀（实测 15 条），
     // 资源层失败已由 requestfailed / response 监听带 URL 单独统计。
     const isResErr = (m: string) => /Failed to load resource/i.test(m);
     const seriousErrors = uniq(errors.filter((m) => !ignored.some((p) => p.test(m)) && !isResErr(m)));

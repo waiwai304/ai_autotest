@@ -3,7 +3,7 @@ import { sites } from '../src/config';
 
 // 桌面端用例仅在 Chromium(桌面 project) 运行；移动端由 tests/wap.spec.ts 覆盖
 test.skip(({ browserName }) => browserName !== 'chromium', '桌面端用例不在移动端(WebKit)运行');
-import { openReady } from '../src/pages/onebuy.page';
+import { openReady } from '../src/pages/shop.page';
 
 for (const site of sites) {
   test.describe(`${site.name} - 登录注册`, () => {

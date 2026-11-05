@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 
 /**
- * OneBuy WAP SKU 标准打法（2026-09-21 四轮修正最终结论的用例化封装）
+ * Shop WAP SKU 标准打法（2026-09-21 四轮修正最终结论的用例化封装）
  *
  * 铁律（来源：output/2026-09-21_1441 复验 + 2026-09-22 回归）：
  * 1. tglobal 源商品 SKU 弹层存在渲染层 bug（BUG-20260921-01）：
@@ -25,8 +25,8 @@ export interface StandardSkuResult {
   cartAddSeen: boolean;   // 是否观测到 cart/add 成功（数据层成功标准）
   cartAdded: boolean;     // addcart 模式：是否出现「added to cart」成功弹窗
   picked: { name: string; quantity: number } | null;
-  noItemData: boolean;    // true = getItem 无数据（间歇性故障或 1688 源无 props），调用方据此 skip
-  mode: 'data-driven' | 'default-spec'; // tglobal=数据驱动；1688 源=默认规格直接操作
+  noItemData: boolean;    // true = getItem 无数据（间歇性故障或 供应链源无 props），调用方据此 skip
+  mode: 'data-driven' | 'default-spec'; // tglobal=数据驱动；供应链源=默认规格直接操作
   logs: string[];
 }
 
@@ -115,7 +115,7 @@ export async function selectStockedSku(
   return { picked: { name: pick.properties_name, quantity: pick.quantity }, noItemData: false };
 }
 
-/** 填数量：优先读弹层 MOQ 提示（Minimum Batch Quantity: N，仅 1688 源）；tglobal 源默认 1 */
+/** 填数量：优先读弹层 MOQ 提示（Minimum Batch Quantity: N，仅 供应链源）；tglobal 源默认 1 */
 export async function fillQty(page: Page, qty?: number): Promise<number> {
   let n = qty && qty > 0 ? qty : 0;
   if (!n) {
@@ -145,7 +145,7 @@ export async function clickPopupConfirm(page: Page, action: SkuAction): Promise<
 
 /**
  * 标准打法完整流程（弹层未打开状态调用）：
- * 打开弹层 → (tglobal)数据驱动选有库存 SKU / (1688)默认规格 → 填数量 → 点确认 → 等跳转/成功弹窗
+ * 打开弹层 → (tglobal)数据驱动选有库存 SKU / (market)默认规格 → 填数量 → 点确认 → 等跳转/成功弹窗
  */
 export async function standardSkuFlow(
   page: Page,
@@ -175,7 +175,7 @@ export async function standardSkuFlow(
   ret.noItemData = sel.noItemData;
   ret.picked = sel.picked;
   ret.mode = sel.noItemData ? 'default-spec' : 'data-driven';
-  if (sel.noItemData) logs.push('降级 default-spec 模式（1688 源默认选中规格场景）');
+  if (sel.noItemData) logs.push('降级 default-spec 模式（供应链源默认选中规格场景）');
 
   const qtyFilled = await fillQty(page, opts.qty);
   logs.push(`数量=${qtyFilled}`);

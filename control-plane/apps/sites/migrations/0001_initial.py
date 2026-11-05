@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=200)),
                 ('code', models.SlugField(unique=True)),
                 ('base_url', models.URLField()),
-                ('adapter_key', models.CharField(default='onebuy', max_length=100)),
+                ('adapter_key', models.CharField(default='shop', max_length=100)),
                 ('enabled', models.BooleanField(default=True)),
                 ('max_concurrency', models.PositiveSmallIntegerField(default=2)),
                 ('requests_per_minute', models.PositiveIntegerField(default=30)),

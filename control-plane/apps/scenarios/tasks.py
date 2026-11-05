@@ -16,7 +16,7 @@ from django.conf import settings
 log = logging.getLogger(__name__)
 
 HEAD_TMPL = r"""/**
- * ⚙️ 自动生成用例（OneBuy 测试平台 /scenarios/cases/create/）
+ * ⚙️ 自动生成用例（自动化测试平台 /scenarios/cases/create/）
  * 用例：__CODE__ · __NAME__
  * 说明：__DESC__
  * 端：__ENDS__ ｜ 需要登录：__AUTH__ ｜ 含写操作：__MUT__
@@ -116,7 +116,7 @@ STEP_TMPL = r"""
 # doc_actions.py 把口语步骤映射为动作原语，本模板渲染为调用 tests/helpers/docflow.ts 的真实 Playwright test。
 # 未识别/WAP/未适配动作的步骤自动降级为上方骨架占位（warn + skip，防假绿）。
 REAL_HEAD_TMPL = r"""/**
- * ⚙️ 自动生成用例·真实执行版（OneBuy 测试平台 /scenarios/cases/create/ → doc_actions.py 自动扩充）
+ * ⚙️ 自动生成用例·真实执行版（自动化测试平台 /scenarios/cases/create/ → doc_actions.py 自动扩充）
  * 用例：__CODE__ · __NAME__
  * 说明：__DESC__
  * 端：__ENDS__ ｜ 需要登录：__AUTH__ ｜ 含写操作：__MUT__

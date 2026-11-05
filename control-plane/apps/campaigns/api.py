@@ -33,7 +33,7 @@ def job_artifacts(request, pk):
 def campaign_trigger(request):
     """外部触发发起 Campaign（2026-10-21 ian：飞书/Hermes/CI 集成）。
     Header: X-Api-Token（= settings.API_TRIGGER_TOKEN；未配置令牌=功能禁用）
-    Body JSON: {"name"?: str, "site_codes": ["vtest2026"], "scenario_codes": ["public-smoke"],
+    Body JSON: {"name"?: str, "site_codes": ["shop-v2"], "scenario_codes": ["public-smoke"],
                 "ends"?: ["pc"], "pick_mode"?: "keyword|link|image", "pick_source"?: "library|manual",
                 "pick_manual"?: str, "policy_codes"?: [...]}
     返回 {"campaign_id", "total_jobs"}。"""

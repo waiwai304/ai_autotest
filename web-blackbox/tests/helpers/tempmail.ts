@@ -128,7 +128,7 @@ export async function fetchMailBody(address: string, id: string): Promise<string
 
 /**
  * 从文本/邮件正文提取验证码。
- * 2026-11-04 ian：真实站点验证码为 4~8 位不定长（vtest2026 是 4 位且写在邮件主题「登录验证码：2965」里），
+ * 2026-11-04 ian：真实站点验证码为 4~8 位不定长（shop-v2 是 4 位且写在邮件主题「登录验证码：2965」里），
  * 故默认不限定位数（4~8），语义关键词优先，避免把时间戳/年份当验证码。
  */
 export function extractCode(raw: string, digits?: number): string | null {
@@ -210,7 +210,7 @@ export async function waitForCode(address: string, opts: WaitOpts = {}): Promise
         if (ignore?.has(m.id)) continue;
         topics.push(m.subject || '(无主题)');
         if (opts.fromRe && !opts.fromRe.test(m.from)) continue;
-        // 主题优先（vtest2026 主题即「登录验证码：2965」，正文常是模板噪声）
+        // 主题优先（shop-v2 主题即「登录验证码：2965」，正文常是模板噪声）
         const fromSubject = extractCode(m.subject, digits);
         if (fromSubject) {
           logs.push(`收到验证码邮件「${m.subject}」，从主题提取验证码 ${fromSubject}（第 ${n} 轮轮询）`);

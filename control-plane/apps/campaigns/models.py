@@ -119,7 +119,7 @@ class NotifySetting(models.Model):
     背景：平台部署在本机，127.0.0.1:3008 其他人无法访问，需在页面填实际可访问地址。"""
     base_url = models.CharField(
         max_length=300, blank=True, default='',
-        help_text='推送本站域名（如 https://onebuy.example.com 或 http://192.168.1.10:3008）；留空回退 PLATFORM_BASE_URL 环境变量')
+        help_text='推送本站域名（如 https://autotest.example.com 或 http://192.168.1.10:3008）；留空回退 PLATFORM_BASE_URL 环境变量')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

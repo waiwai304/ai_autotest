@@ -6,7 +6,7 @@
  * - 临时换域名（不改 json）：env SITE_PC_BASE_URL / SITE_WAP_BASE_URL / SITE_BOSS_BASE_URL
  *
  * 用法（用例内禁止出现任何 https://域名 或页面路径字面量）：
- *   import { site, pcUrl, bossUrl, bossApi, wapEntry, wapRoute, offer1688 } from './helpers/site';
+ *   import { site, pcUrl, bossUrl, bossApi, wapEntry, wapRoute, offerMarket } from './helpers/site';
  *   await page.goto(pcUrl('warehouse'));          // https://demo.example.com/zh-cn/dashboard/warehouse
  *   await page.goto(bossUrl('packagePicking'));   // https://boss.demo.example.com/3hxSz0YT/warehouse/package-picking
  *   await fetch(bossApi('packageLists'), ...)     // https://boss.demo.example.com/api/admin/v1/waybill/package/lists
@@ -110,7 +110,7 @@ export const wapHome = `${wapBase}${wapEntry}/`;
 
 // ---------- 后台（boss） ----------
 const bossBase = envOr(process.env.SITE_BOSS_BASE_URL, site.boss?.baseURL || '');
-// SITE_BOSS_ENTRY：平台多站点（不同安全入口段，如 vtest2026 /xDDQtbeo）覆盖 sites.json 默认 entry
+// SITE_BOSS_ENTRY：平台多站点（不同安全入口段，如 shop-v2 /xDDQtbeo）覆盖 sites.json 默认 entry
 const bossEntry = envOr(process.env.SITE_BOSS_ENTRY, site.boss?.entry ?? '');
 const bossPaths = site.boss?.paths ?? {};
 const bossApiPrefix = site.boss?.apiPrefix ?? '/api/admin/v1';
@@ -170,9 +170,9 @@ export const SET_CURRENCY_USD = `(() => {
 })()`;
 
 // ---------- 商品源 ----------
-/** 1688 商品详情页源链接 */
-export function offer1688(iid: string): string {
-  const origin = site.testData.sourceSite1688 || 'https://detail.1688.com';
+/** 供应链商品详情页源链接 */
+export function offerMarket(iid: string): string {
+  const origin = site.testData.sourceSiteMarket || 'https://detail.market.example.com';
   return `${origin}/offer/${iid}.html`;
 }
 
@@ -185,11 +185,11 @@ export function libPool(kind: 'KEYWORDS' | 'IMAGES' | 'LINKS', fallback: string[
   return pool.length ? pool : fallback;
 }
 
-/** 从 LIB_LINKS/其他文本抽 1688 offer num_iid（链接形态 .../offer/<数字>.html 或纯数字）；抽不到返回 fallback。
+/** 从 LIB_LINKS/其他文本抽 market offer num_iid（链接形态 .../offer/<数字>.html 或纯数字）；抽不到返回 fallback。
  * 2026-10-09 ian：发起页勾选（LIB_LINKS_MODE=picked）却抽不到编号时【直接抛错】——
  * 全链是真实下单链路，静默回退站点档案=用户勾了 A 商品却下单 B，比失败更不可接受；
  * 错误消息指明勾了什么、正确格式是什么。随机抽取模式保持回退（best-effort）。 */
-export function pick1688FromLib(fallback: string): { iid: string; source: string } {
+export function pickMarketFromLib(fallback: string): { iid: string; source: string } {
   const links = libPool('LINKS');
   for (let i = 0; i < links.length; i++) {
     const idx = Math.floor(Math.random() * links.length);
@@ -197,11 +197,11 @@ export function pick1688FromLib(fallback: string): { iid: string; source: string
     if (m) return { iid: m[1], source: `用例库链接#${idx}` };
   }
   if (links.length && process.env.LIB_LINKS_MODE === 'picked') {
-    throw new Error(`测试用例库勾选的 ${links.length} 条链接均不含 1688 offer 编号（${links.join(' | ')}）。`
-      + '全链选品仅支持 https://detail.1688.com/offer/<数字>.html 或纯商品编号；淘宝/微店等链接请改用支持搜索的用例（如加购/购物车/收藏）或换成 1688 链接');
+    throw new Error(`测试用例库勾选的 ${links.length} 条链接均不含 供应链 offer 编号（${links.join(' | ')}）。`
+      + '全链选品仅支持 https://detail.market.example.com/offer/<数字>.html 或纯商品编号；淘宝/微店等链接请改用支持搜索的用例（如加购/购物车/收藏）或换成供应链链接');
   }
   if (links.length) {
-    return { iid: fallback, source: `站点档案 numIidFullChain（库随机 ${links.length} 条均无 1688 编号，回退）` };
+    return { iid: fallback, source: `站点档案 numIidFullChain（库随机 ${links.length} 条均无 供应链编号，回退）` };
   }
   return { iid: fallback, source: '站点档案 numIidFullChain' };
 }

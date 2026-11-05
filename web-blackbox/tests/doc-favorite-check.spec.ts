@@ -9,7 +9,7 @@
  *
  * 打法依据（2026-09-28 探针实锤）：
  *   - PC 搜索：首页 antd Select（.ant-select）点击后 keyboard.type → Enter（勿点联想，避免搜成推荐词）
- *   - 搜索结果：a[href*="/detail/"] 即完整详情深链（tglobal/1688 源均含 num_iid）
+ *   - 搜索结果：a[href*="/detail/"] 即完整详情深链（tglobal/供应链源均含 num_iid）
  *   - 详情渲染标志：body 含「收藏」+价格；CSP 无 unsafe-eval，禁用 waitForFunction，须轮询 evaluate
  *   - 收藏按钮：button 文本「收藏」/「已收藏」，位于「加入购物车/立即购买」下一行（rect.y 更大）
  *   - 接口链：favorite/checkFavorite {data:0|1} → favorite/add {code:1} → favorite/delete {code:1}
@@ -87,8 +87,8 @@ async function recordStep(id: string, name: string, page: Page, status: 'ok' | '
 function frontAccount(): { account: string; password: string } {
   const envTxt = readFileSync('.env', 'utf-8');
   return {
-    account: process.env.SITE_FRONT_ACCOUNT || /^ONEBUY_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
-    password: process.env.SITE_FRONT_PASSWORD || /^ONEBUY_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
+    account: process.env.SITE_FRONT_ACCOUNT || /^TEST_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
+    password: process.env.SITE_FRONT_PASSWORD || /^TEST_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
   };
 }
 

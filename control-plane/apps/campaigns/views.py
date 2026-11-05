@@ -550,7 +550,7 @@ def job_resume(request, pk, job_id):
     ok_ids, src = [], ''
     # 候选根：runner 容器视角 /workspace/runner/output（web 容器无此挂载 → 落到宿主前缀，再不可达走 DB 回退）
     for root in (_Path(_settings.RUNNER_ROOT) / 'output',
-                 _Path('/mnt500/www/wwwroot/onebuy_ceshi/web-blackbox/output')):
+                 _Path('/opt/ai_autotest/web-blackbox/output')):
         if not root.is_dir():
             continue
         rf = root / run_id / 'fullchain-result.json'

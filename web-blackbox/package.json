@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
-    "test:onebuy": "playwright test --project=onebuy-desktop",
-    "test:mobile": "playwright test --project=onebuy-mobile",
+    "test:web": "playwright test --project=web-desktop",
+    "test:mobile": "playwright test --project=web-mobile",
     "test:all": "playwright test",
     "report": "playwright show-report output/html-report"
   },

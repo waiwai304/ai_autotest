@@ -5,7 +5,7 @@
  * 2026-09-30 站点改版适配（探针实锤，scripts/probe-home-goods.ts）：
  *   - 首页已改版为纯营销页：无 /detail/ 商品链接（购物时报区块纯展示），旧「降级首页推荐位」路径已死
  *   - 搜索框：antd Select → 原生 input[placeholder="输入商品名称/链接"]（第 1 个常 hidden，用 nth(1)）
- *   - 搜索：fill + Enter → /zh-cn/search?q=<kw>&page=1&platform=1688 → a[href*="/detail"]（20 个）
+ *   - 搜索：fill + Enter → /zh-cn/search?q=<kw>&page=1&platform=market → a[href*="/detail"]（20 个）
  *   - 详情页 CTA 行 = [立即购买(文本)][加购(纯图标按钮)][收藏(纯图标按钮)]——加购 = 立即购买的 nextElementSibling
  *   - 购物车页：pcUrl('cart') = /zh-cn/dashboard/cart（页头徽标入口）
  * 加购成功双证据：POST /api/*cart* code=1 ｜ 页头购物车徽标数字增加
@@ -80,8 +80,8 @@ async function recordStep(id: string, name: string, page: Page, status: 'ok' | '
 function frontAccount(): { account: string; password: string } {
   const envTxt = readFileSync('.env', 'utf-8');
   return {
-    account: process.env.SITE_FRONT_ACCOUNT || /^ONEBUY_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
-    password: process.env.SITE_FRONT_PASSWORD || /^ONEBUY_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
+    account: process.env.SITE_FRONT_ACCOUNT || /^TEST_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
+    password: process.env.SITE_FRONT_PASSWORD || /^TEST_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
   };
 }
 

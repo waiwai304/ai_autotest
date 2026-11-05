@@ -85,8 +85,8 @@ async function recordStep(id: string, name: string, page: Page, status: 'ok' | '
 export function frontAccount(): { account: string; password: string } {
   const envTxt = readFileSync('.env', 'utf-8');
   return {
-    account: process.env.SITE_FRONT_ACCOUNT || /^ONEBUY_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
-    password: process.env.SITE_FRONT_PASSWORD || /^ONEBUY_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
+    account: process.env.SITE_FRONT_ACCOUNT || /^TEST_TEST_ACCOUNT=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
+    password: process.env.SITE_FRONT_PASSWORD || /^TEST_TEST_PASSWORD=(.*)$/m.exec(envTxt)?.[1]?.trim() || '',
   };
 }
 
@@ -115,9 +115,9 @@ export function hasSkillPack(code: string): boolean {
 
 /**
  * 站点是否要求邮箱验证码（无副作用预判）。
- * 2026-11-04 ian 实测 OneBuy 系站点 `/api/v1/other/configList` 直接暴露开关：
+ * 2026-11-04 ian 实测 商城系站点 `/api/v1/other/configList` 直接暴露开关：
  *   user_register_captcha=1 → 注册要邮箱验证码；user_login_captcha=1 → 登录要；user_channel_captcha=email → 渠道为邮箱
- *   对照：v2026 双 0（注册即登录，无需验证码）、vtest2026 双 1（注册/登录均要验证码）。
+ *   对照：v2026 双 0（注册即登录，无需验证码）、shop-v2 双 1（注册/登录均要验证码）。
  * 配置接口不可用时返回 null，交由页面/提交后探测兜底。
  */
 export type EmailCaptchaConfig = { register: boolean; login: boolean; channel: string; raw: Record<string, string> };
@@ -179,7 +179,7 @@ export async function login(page: Page, logs: string[], acc?: Cred): Promise<voi
   await page.getByRole('button', { name: '登录', exact: true }).first().click();
   await page.waitForTimeout(6_000);
 
-  // 2026-11-04 ian：部分站点登录要求「邮箱验证码」（vtest2026 返回 code=100000「请完成邮箱验证」，弹验证码层）。
+  // 2026-11-04 ian：部分站点登录要求「邮箱验证码」（shop-v2 返回 code=100000「请完成邮箱验证」，弹验证码层）。
   // 临时邮箱注册的账号可自动收码；站点测试账号无邮箱则明确报错，不静默失败。
   if (await hasEmailCodeField(page)) {
     const cfgLogin = await probeEmailCaptchaConfig(page);
@@ -317,7 +317,7 @@ async function clickDialogSubmit(page: Page, logs: string[]): Promise<void> {
 
 /**
  * 处理「邮箱验证码」弹层：临时邮箱自动收码 → 填码 → 提交（最多 2 轮）。
- * 2026-11-04 ian 实测 vtest2026：登录返回 code=100000「请完成邮箱验证」，弹层提示「验证码已发送至: xxx」，
+ * 2026-11-04 ian 实测 shop-v2：登录返回 code=100000「请完成邮箱验证」，弹层提示「验证码已发送至: xxx」，
  * 验证码为 4 位、写在邮件主题（「登录验证码：3691」）。站点测试账号无邮箱 → 明确报错。
  */
 export async function handleEmailCodeModal(
@@ -452,7 +452,7 @@ export async function register(page: Page, logs: string[]): Promise<{ account: s
         `（user_register_captcha=${cfg.raw.user_register_captcha} / user_login_captcha=${cfg.raw.user_login_captcha}）`,
     );
   } else {
-    logs.push('站点验证码配置接口不可读（或非 OneBuy 系站点），改由页面/提交后探测兜底');
+    logs.push('站点验证码配置接口不可读（或非 商城系站点），改由页面/提交后探测兜底');
   }
   if (tempOn) {
     try {
@@ -531,7 +531,7 @@ export async function register(page: Page, logs: string[]): Promise<{ account: s
 
   // 2026-11-04 ian：站点注册后行为有两类——
   //   A. 注册即自动登录（demo.example.com，跳 dashboard，页面出现新邮箱）
-  //   B. 注册成功但跳登录页，需再登录（vtest2026.example.com；且登录强制邮箱验证码 → 临时邮箱自动收码）
+  //   B. 注册成功但跳登录页，需再登录（shop-v2.example.com；且登录强制邮箱验证码 → 临时邮箱自动收码）
   if (/login/.test(page.url())) {
     logs.push(`注册成功（站点跳转登录页，未自动登录）：${account}，使用新账号主动登录…`);
     await dismissOverlays(page, logs);
@@ -792,7 +792,7 @@ export async function expectText(page: Page, logs: string[], text: string): Prom
 
 
 // ============ 通用交互原语（2026-11-04 ian：AI 探索/用例库补齐表单填写与按文本点击）============
-// 背景：onebound.cn 留言表单类意图原先无原语可映射（AI 只能输出 unknown），探索卡在 S3/S4。
+// 背景：第三方站点留言表单类意图原先无原语可映射（AI 只能输出 unknown），探索卡在 S3/S4。
 // 语义：fillForm 按「定位=值」逐项填写并回读校验；clickByText 按可见文本点击按钮/链接。
 // 两者的定位都支持 label 文本 / placeholder / name / CSS 选择器，覆盖绝大多数官网表单。
 

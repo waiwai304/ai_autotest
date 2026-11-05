@@ -1,4 +1,4 @@
-# OneBuy Django 测试管理平台（端口 3008）
+# Django 测试管理平台
 
 依据《Django网站自动化测试平台实施文档-端口3008.md》实施；结合现有 Playwright 黑盒测试项目（../web-blackbox）。
 

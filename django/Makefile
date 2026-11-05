@@ -16,8 +16,7 @@ superuser:
 sync:
 	docker compose run --rm web python manage.py sync_policy_packs /opt/policy-packs
 	docker compose run --rm web python manage.py sync_skill_packs /opt/skill-packs
-	docker compose run --rm web python manage.py seed_onebuy
-
+	docker compose run --rm web 
 ps:
 	docker compose ps
 

@@ -43,15 +43,15 @@ export interface SiteConfig {
   features: Record<string, boolean>;
   testData: {
     searchKeyword: string;
-    valid1688ProductUrl: string;
+    validMarketProductUrl: string;
     destination: string;
     weightGrams: number;
     lengthCm: number;
     widthCm: number;
     heightCm: number;
-    /** 1688 源站域名（默认 https://detail.1688.com） */
-    sourceSite1688?: string;
-    /** full-chain 用例使用的 1688 商品 num_iid */
+    /** 供应链源站域名（默认 https://detail.market.example.com） */
+    sourceSiteMarket?: string;
+    /** full-chain 用例使用的 供应链商品 num_iid */
     numIidFullChain?: string;
     /** WAP 详情页用例商品 num_iid */
     numIidWapDetail?: string;

@@ -219,7 +219,7 @@ def _notify_content(campaign) -> str:
     if campaign.started_at and campaign.finished_at:
         elapsed = f"｜耗时 {int((campaign.finished_at - campaign.started_at).total_seconds())}s"
     sites = sorted({j.site_code for j in jobs if j.site_code})
-    lines = [f"[OneBuy 测试平台] Campaign #{campaign.pk}「{campaign.name}」{campaign.get_status_display()}",
+    lines = [f"[自动化测试平台] Campaign #{campaign.pk}「{campaign.name}」{campaign.get_status_display()}",
              f"任务 {campaign.total_jobs} 个：通过 {campaign.passed_jobs} / 失败 {campaign.failed_jobs}"
              + (f" / 取消 {n_cancel}" if n_cancel else '') + (f" / 失联 {n_lost}" if n_lost else '')
              + (f"｜站点 {'、'.join(sites)}" if sites else '') + elapsed]
@@ -264,7 +264,7 @@ def _job_notify_content(job) -> str:
     s = job.result_summary or {}
     run_id = s.get('run_id') or f"JOB-{job.pk:06d}-{(job.device or 'pc').upper()}"
     status_map = {'passed': '通过', 'failed': '失败', 'cancelled': '已取消', 'lost': '失联'}
-    lines = [f"[OneBuy 测试平台] {run_id} · {job.scenario_code} @ {job.site_code}",
+    lines = [f"[自动化测试平台] {run_id} · {job.scenario_code} @ {job.site_code}",
              f"结果：{status_map.get(job.status, job.status)}"]
     prog = job.progress or {}
     if prog.get('total'):
