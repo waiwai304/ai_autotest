@@ -1,10 +1,22 @@
-# ai_autotest · AI 驱动的网站自动化测试中心
+<img width="1910" height="911" alt="image" src="https://github.com/user-attachments/assets/f6f11e00-1fd9-4fa0-9f0a-47168b106076" /># ai_autotest · AI 驱动的网站自动化测试中心
 
 > 用一句话描述测试目标，通过 AI 规划、真实浏览器探索和执行报告，把网站回归测试组织成可复用的用例。
 >
 > **适用读者**：测试人员、项目负责人及维护测试中心的工程师。已部署平台的用户可直接跳到[首次使用](#首次使用从一个冒烟用例开始)。
 
 ![平台架构：控制平面、任务编排、浏览器执行与报告](docs/images/architecture.png)
+平台截图：
+1.控制台-执行中心
+<img width="1898" height="897" alt="image" src="https://github.com/user-attachments/assets/25ffb0a9-8751-42b9-8551-9a9cc8712e44" />
+2.测试启动台
+<img width="1902" height="895" alt="image" src="https://github.com/user-attachments/assets/a0a72af4-47e4-419c-9c02-cdfda309de05" />
+3.测试用例库
+
+4.ai生成测试用例
+生成中：
+<img width="1894" height="911" alt="image" src="https://github.com/user-attachments/assets/53c90947-f24d-427c-85af-ee6f1857596a" />
+生成计划并可以人工查看和修补
+<img width="1666" height="739" alt="image" src="https://github.com/user-attachments/assets/9bc599a4-a733-47c1-b9d9-7e317b9fb2e1" />
 
 ## 阅读说明与版本边界
 
